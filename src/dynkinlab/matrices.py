@@ -2,14 +2,18 @@
 
 An infinite matrix is a matrix that has no fixed size. It can be
 indexed with any non-negative integer, and will automatically
-grow to accomodate the index. The matrix is stored as a sparse
+grow to accommodate the index. The matrix is stored as a sparse
 matrix, so it is efficient to store and access elements that
 are not explicitly set.
 """
-from collections.abc import Iterable, Sequence, Iterator
-from typing import Any
-from scipy import sparse
+import io
+import json
+from collections.abc import Iterable, Iterator, Sequence
+from pathlib import Path
+from typing import Any, TypedDict
+
 import numpy as np
+from scipy import sparse
 
 Indexer = int | slice | Sequence[int]
 ArrayLike = Sequence[Sequence[Any]] | Sequence[Any] | Any
@@ -20,7 +24,7 @@ class InfiniteMatrix:
 
     An infinite matrix is a matrix that has no fixed size. It can be
     indexed with any non-negative integer, and will automatically
-    grow to accomodate the index. The matrix is stored as a sparse
+    grow to accommodate the index. The matrix is stored as a sparse
     matrix, so it is efficient to store and access elements that
     are not explicitly set.
 
@@ -43,6 +47,18 @@ class InfiniteMatrix:
         The data type of the matrix.
     """
 
+    class _CoordinateRecord(TypedDict):
+        """A record of a matrix element."""
+
+        i: int
+        j: int
+        value: Any
+
+    class _DictRepresentation(TypedDict):
+        """Dictionary representation of the matrix."""
+
+        data: list["InfiniteMatrix._CoordinateRecord"]
+
     def __init__(
         self,
         data: Iterable[tuple[int, int, Any]] | None = None,
@@ -52,7 +68,7 @@ class InfiniteMatrix:
 
         An infinite matrix is a matrix that has no fixed size. It can be
         indexed with any non-negative integer, and will automatically
-        grow to accomodate the index. The matrix is stored as a sparse
+        grow to accommodate the index. The matrix is stored as a sparse
         matrix, so it is efficient to store and access elements that
         are not explicitly set.
 
@@ -104,7 +120,7 @@ class InfiniteMatrix:
         """The data type of the matrix entries."""
         return self._dtype
 
-    def to_sparse(self) -> sparse.coo_matrix:
+    def to_sparse(self) -> sparse.coo_array:
         """Convert the matrix to a sparse matrix.
 
         Returns
@@ -113,7 +129,54 @@ class InfiniteMatrix:
             The sparse matrix.
         """
         i, j, data = zip(*self._iter_data())
-        return sparse.coo_matrix((data, (i, j)), dtype=self._dtype)
+        return sparse.coo_array((data, (i, j)), dtype=self._dtype)
+
+    def to_dense(self) -> np.ndarray:
+        """Convert the matrix to a dense array form."""
+        return self.to_sparse().todense()
+
+    def to_dict(self) -> "InfiniteMatrix._DictRepresentation":
+        """Convert the matrix to a dictionary representation.
+
+        Returns
+        -------
+        dict
+            A dictionary representation of the matrix.
+        """
+        as_record = self._CoordinateRecord
+        data = (as_record(i=i, j=j, value=v) for i, j, v in self._iter_data())
+        return {"data": list(data)}
+
+    def to_json(self, file: str | io.TextIOBase | Path, **kwargs) -> None:
+        """Write the matrix to a JSON file.
+
+        Parameters
+        ----------
+        file : Path or file object
+            The file to write to.
+        **kwargs
+            Additional keyword arguments to pass to json.dump.
+        """
+        if isinstance(file, (str, Path)):
+            with open(file, "w") as f:
+                json.dump(self.to_dict(), f, **kwargs)
+        else:
+            json.dump(self.to_dict(), file, **kwargs)
+
+    def from_json(self, file: str | io.TextIOBase | Path) -> "InfiniteMatrix":
+        """Read the matrix from a JSON file.
+
+        Parameters
+        ----------
+        file : Path or file object
+            The file to read from.
+        """
+        if isinstance(file, (str, Path)):
+            with open(file, "r") as f:
+                data = json.load(f)
+        else:
+            data = json.load(file)
+        return InfiniteMatrix(data["data"])
 
     def __repr__(self) -> str:
         """Return a string representation of the matrix."""
@@ -122,6 +185,39 @@ class InfiniteMatrix:
             return f"InfiniteMatrix(dtype={self.dtype.__name__})"
         return f"InfiniteMatrix({data}, dtype={self.dtype.__name__})"
 
+    def __getitem__(self, index: tuple[Indexer, Indexer]) -> Any | np.ndarray:
+        """Get an element or submatrix of the matrix."""
+        i, j = index
+        if isinstance(i, int) and isinstance(j, int):
+            return self._get_item(i, j)
+        elif isinstance(i, int):
+            assert not isinstance(j, int)
+            return self._get_row(i, j)
+        elif isinstance(j, int):
+            assert not isinstance(i, int)
+            return self._get_col(i, j)
+        return self._get_submatrix(i, j)
+
+    def __setitem__(
+        self,
+        index: tuple[Indexer, Indexer],
+        value: ArrayLike,
+    ) -> None:
+        """Set an element or submatrix of the matrix."""
+        i, j = index
+        if isinstance(i, int) and isinstance(j, int):
+            self._set_item(i, j, value)
+        elif isinstance(i, int):
+            assert not isinstance(j, int)
+            self._set_row(i, j, value)
+        elif isinstance(j, int):
+            assert not isinstance(i, int)
+            self._set_column(i, j, value)
+        else:
+            self._set_submatrix(i, j, value)
+
+    # Private methods
+    # ---------------
     def _iter_data(self) -> Iterator[tuple[int, int, Any]]:
         for i, row in self._data.items():
             for j, v in row.items():
@@ -161,19 +257,6 @@ class InfiniteMatrix:
         return np.array(
             [[self._get_item(k, ell) for ell in j] for k in i], dtype=self._dtype
         )
-
-    def __getitem__(self, index: tuple[Indexer, Indexer]) -> Any | np.ndarray:
-        """Get an element or submatrix of the matrix."""
-        i, j = index
-        if isinstance(i, int) and isinstance(j, int):
-            return self._get_item(i, j)
-        elif isinstance(i, int):
-            assert not isinstance(j, int)
-            return self._get_row(i, j)
-        elif isinstance(j, int):
-            assert not isinstance(i, int)
-            return self._get_col(i, j)
-        return self._get_submatrix(i, j)
 
     def _set_item(self, i: int, j: int, value: Any) -> None:
         value = self._dtype(value)
@@ -236,21 +319,3 @@ class InfiniteMatrix:
         for k, row in zip(i, value):
             for ell, v in zip(j, row):
                 self._set_item(k, ell, v)
-
-    def __setitem__(
-        self,
-        index: tuple[Indexer, Indexer],
-        value: ArrayLike,
-    ) -> None:
-        """Set an element or submatrix of the matrix."""
-        i, j = index
-        if isinstance(i, int) and isinstance(j, int):
-            self._set_item(i, j, value)
-        elif isinstance(i, int):
-            assert not isinstance(j, int)
-            self._set_row(i, j, value)
-        elif isinstance(j, int):
-            assert not isinstance(i, int)
-            self._set_column(i, j, value)
-        else:
-            self._set_submatrix(i, j, value)
