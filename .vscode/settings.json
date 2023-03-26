@@ -28,4 +28,12 @@
         "test_*.py"
     ],
     "python.testing.pytestEnabled": false,
+    "cSpell.language": "en-GB",
+    "cSpell.words": [
+        "dtype",
+        "dynkinlab",
+        "scipy",
+        "submatrix",
+        "todense"
+    ],
 }
