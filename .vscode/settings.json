@@ -1,0 +1,31 @@
+{
+    "editor.rulers": [
+        80
+    ],
+    "editor.formatOnSave": true,
+    "python.linting.enabled": true,
+    "python.linting.flake8Enabled": true,
+    "python.linting.pydocstyleEnabled": true,
+    "python.formatting.provider": "black",
+    "[python]": {
+        "editor.rulers": [
+            72,
+            88
+        ],
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": true
+        }
+    },
+    "python.linting.lintOnSave": true,
+    "python.testing.unittestEnabled": true,
+    "python.defaultInterpreterPath": ".venv/bin/python3",
+    "python.linting.mypyEnabled": true,
+    "python.testing.unittestArgs": [
+        "-v",
+        "-s",
+        "./tests",
+        "-p",
+        "test_*.py"
+    ],
+    "python.testing.pytestEnabled": false,
+}

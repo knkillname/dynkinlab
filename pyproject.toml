@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "Dynkinlab"
+version = "0.0.1"
+authors = [
+  { name="Mario Abarca", email="mario.abarca@uaem.edu.mx" },
+]
+description = "A library for working with Dynkin diagrams and Cartan matrices"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
