@@ -4,7 +4,10 @@
 """Public package surface for DynkinLab."""
 
 from dynkinlab import __about__
+from dynkinlab.inertia import Inertia
+from dynkinlab.quadratic_form import QuadraticForm
+from dynkinlab.quasi_cartan import QuasiCartanMatrix
 
 __version__ = __about__.__version__
 
-__all__ = ["__version__"]
+__all__ = ["Inertia", "QuadraticForm", "QuasiCartanMatrix", "__version__"]

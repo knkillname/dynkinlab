@@ -34,8 +34,29 @@ assert dynkinlab.__version__
 print(f"DynkinLab {dynkinlab.__version__}")
 ```
 
-The package currently exposes only `__version__`. The next change adds the mathematical API for
-Dynkin diagrams and bigraphs.
+## Quasi-Cartan matrices
+
+Build a symmetric quasi-Cartan matrix, evaluate its integer quadratic form, and inspect its exact
+inertia:
+
+```python
+from dynkinlab import QuasiCartanMatrix
+
+matrix = QuasiCartanMatrix(((2, -1), (-1, 2)))
+form = matrix.quadratic_form
+inertia = matrix.inertia
+
+assert form.evaluate((1, 1)) == 1
+assert inertia.is_positive_definite
+print(f"dimension={matrix.dimension}, inertia={inertia}")
+```
+
+The `A_2` Cartan matrix above has inertia `(2, 0, 0)`. The affine `A_2^(1)` matrix has inertia
+`(2, 0, 1)`, and indefinite forms have both positive and negative counts. Inertia is computed by
+exact rational congruence reduction.
+
+The current mathematical surface covers quasi-Cartan matrices, quadratic forms, and inertia.
+Later changes add the bigraph, flation, and Dynkin classifier layers.
 
 ## Notebooks in Colab
 

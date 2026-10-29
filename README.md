@@ -6,8 +6,9 @@
 DynkinLab is a typed Python library for Dynkin diagrams, quivers, and bigraphs. It is designed to
 run in Google Colab as well as in a local Python 3.13+ environment.
 
-This repository currently contains the package foundation: installation metadata, the documentation
-skeleton, and the quality gates. The mathematical API arrives in a follow-up change.
+This repository currently provides the package foundation plus the first mathematical layer:
+symmetric quasi-Cartan matrices, exact integer quadratic forms, and exact inertia. Bigraphs,
+flation, and Dynkin classification arrive in later changes.
 
 ## Requirements
 
@@ -33,9 +34,16 @@ installs without extra setup.
 ## Quick start
 
 ```python
-import dynkinlab
+from dynkinlab import QuasiCartanMatrix
 
-print(f"DynkinLab {dynkinlab.__version__}")
+matrix = QuasiCartanMatrix(((2, -1), (-1, 2)))
+form = matrix.quadratic_form
+inertia = matrix.inertia
+
+assert matrix.dimension == 2
+assert form.evaluate((1, 1)) == 1
+assert inertia.is_positive_definite
+print(f"A_2: dimension={matrix.dimension}, q(1,1)={form.evaluate((1, 1))}, inertia={inertia}")
 ```
 
 Every Python snippet in this README is executed by the test suite, so the example stays runnable.

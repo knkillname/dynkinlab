@@ -48,6 +48,11 @@ Source = "https://github.com/knkillname/dynkinlab"
 [tool.hatch.version]
 path = "src/dynkinlab/__about__.py"
 
+[tool.hatch.envs.hatch-check-types]
+extra-dependencies = [
+  "hypothesis>=6.0",
+]
+
 [tool.hatch.envs.hatch-test]
 extra-dependencies = [
   "hypothesis>=6.0",
