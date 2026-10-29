@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026-present Mario Abarca <knkillname@gmail.com>
 #
 # SPDX-License-Identifier: MIT
-"""Tests for the paper-faithful Dynkin classifier."""
+"""Tests for the exact cubic Dynkin classifier."""
 
 import pytest
 

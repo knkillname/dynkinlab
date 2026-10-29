@@ -167,7 +167,7 @@ def _reference_flate(
     source: int,
     target: int,
 ) -> tuple[tuple[int, ...], ...]:
-    """Return the paper's flation formula using independent list arithmetic."""
+    """Return a reference flation implementation using independent list arithmetic."""
     size = len(entries)
     rows = [list(row) for row in entries]
     if source == target:

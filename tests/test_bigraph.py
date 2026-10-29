@@ -102,8 +102,8 @@ class TestBigraph:
 
         assert bigraph.edges == ()
 
-    def test_paper_figure_pair_uses_smaller_to_larger_direction(self) -> None:
-        # The paper's Figure 1 pair (3, 6): A_36 = 1, A_63 = 2.
+    def test_mixed_pair_uses_smaller_to_larger_direction(self) -> None:
+        # The mixed pair (3, 6): A_36 = 1, A_63 = 2.
         bigraph = Bigraph(QuasiCartanMatrix(((2, 1), (2, 2))), (3, 6))
 
         assert bigraph.edges == (BigraphEdge(3, 6, True, EdgeStyle.DOTTED, 2),)

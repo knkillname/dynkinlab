@@ -80,7 +80,7 @@ print(result.to_markdown())
 
 The classifier supports the full finite list A–G and returns a first-class flation witness, the
 normal form, exact inertia, and clear `NOT_ADMISSIBLE` / `NOT_POSITIVE_DEFINITE` outcomes. G2 is
-handled as a documented extension to the paper’s admissible class.
+handled as a documented extension to the admissibility conditions.
 
 ## Rich display in Colab
 

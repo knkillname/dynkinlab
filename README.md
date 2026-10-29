@@ -7,7 +7,7 @@ DynkinLab is a typed Python library for Dynkin diagrams, quivers, and bigraphs. 
 run in Google Colab as well as in a local Python 3.13+ environment.
 
 The current surface covers symmetrizable quasi-Cartan matrices, exact integer quadratic forms and
-inertia, label-generic mixed bigraphs, first-class flation witnesses, and the paper-faithful cubic
+inertia, label-generic mixed bigraphs, first-class flation witnesses, and the exact cubic
 Dynkin classifier. Value objects render as Markdown or HTML in Colab and Jupyter.
 
 ## Requirements

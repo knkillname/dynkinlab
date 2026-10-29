@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `S = D A` by rational congruence reduction, including a public `Inertia.from_matrix` entry point.
 - Label-generic `Bigraph` views over `QuasiCartanMatrix`, mixed edge/arrow derivation, and
   first-class `FlationStep` / `FlationSequence` witnesses.
-- `DynkinType` for the full finite A–G list and a paper-faithful cubic `DynkinClassification`
+- `DynkinType` for the full finite A–G list and an exact cubic `DynkinClassification`
   classifier with exact inertia, normal forms, witnesses, and a documented G2 extension.
 - Colab/Jupyter Markdown and HTML rendering for matrices, forms, inertia, mixed bigraphs, and Dynkin
   results, with notebook-wide `dynkinlab.display.options` and per-call `DisplayOptions` overrides.

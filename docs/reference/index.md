@@ -184,7 +184,7 @@ and signature, followed by a definiteness or degeneracy label. In Colab, `Inerti
 
 `Bigraph(matrix, labels=None)` is a label-generic view over a `QuasiCartanMatrix`. It derives
 undirected edges for equal entries and arrows for unequal magnitudes. The signed weight follows the
-paper's convention: the direction points from the smaller magnitude to the larger, and the style is
+library's convention: the direction points from the smaller magnitude to the larger, and the style is
 solid for a negative weight and dotted for a positive one.
 
 ```python
@@ -237,9 +237,36 @@ assert DynkinType.from_matrix(matrix) == dynkin_type
 assert DynkinType.from_bigraph(Bigraph(matrix)) == dynkin_type
 ```
 
-`DynkinType.from_matrix(matrix)` and `DynkinType.from_bigraph(bigraph)` apply the paper's Stage 3
-graph classification to a connected solid mixed bigraph. They return `None` when the graph is not a
-finite Dynkin diagram.
+`DynkinType.from_matrix(matrix)` and `DynkinType.from_bigraph(bigraph)` apply the final
+solid-bigraph classification stage to a connected solid mixed bigraph. They return `None` when the
+graph is not a finite Dynkin diagram.
+
+## Classification algorithm
+
+The classifier works on connected components of the nonzero off-diagonal graph.
+
+**Admissibility.** A component is admissible when every off-diagonal entry has magnitude at most 2,
+each nonzero pair is symmetrizable with consistent signs, and no pair has both magnitudes greater
+than 1. The 2-by-2 `G_2` matrix is the documented exception: its magnitude-3 entries bypass the
+admissibility filter and are classified directly.
+
+**Flation search.** A flation is the integer row/column operation that replaces one row and column
+using another; setting source and target equal performs a sign inversion. Flations preserve the
+Dynkin type. The classifier applies them only to dotted edges and maintains a dotted-edge index so
+the symmetric search stays within its O(n^3) bound. Symmetric components run until no dotted edge
+remains, bounded by the dimension-dependent symmetric inflation bound. Non-symmetric components
+first choose a distinguished vertex (a source or sink carrying every arrow) and make the bigraph
+solid-arched; for n > 4 they run the symmetric search on the graph without that vertex, and for
+n <= 4 they use a bounded direct search.
+
+**Normal form.** When the search ends with a solid bigraph, the component is read as its connected
+Dynkin diagram. A search that exhausts its bound, cannot complete preprocessing, or reaches a
+non-Dynkin normal form returns `NOT_POSITIVE_DEFINITE` with a reason. An admissible component with a
+negative eigenvalue is rejected by exact inertia before any flation.
+
+The classifier uses exact integer arithmetic and performs O(n^3) operations for admissible input; it
+does not rely on floating-point eigenvalues. `DynkinType.from_matrix` and
+`DynkinType.from_bigraph` expose the final normal-form classification directly.
 
 ## Dynkin classification
 
@@ -264,7 +291,8 @@ The classifier is exact and bounded. `NOT_ADMISSIBLE` reports a filter failure. 
 components are rejected by exact inertia before any flation, so the result reports
 `NOT_POSITIVE_DEFINITE` with reason `indefinite`, zero steps, and an empty witness. Non-negative
 components keep the bounded behavior, where `NOT_POSITIVE_DEFINITE` reports bound exhaustion or a
-non-Dynkin normal form. G2 is handled as a documented O(1) extension to the paper's admissible class.
+non-Dynkin normal form. G2 is handled as a documented O(1) extension to the admissibility
+conditions.
 
 ## Classification display
 

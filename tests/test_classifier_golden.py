@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026-present Mario Abarca <knkillname@gmail.com>
 #
 # SPDX-License-Identifier: MIT
-"""Golden classification tests from the paper and the thesis."""
+"""Golden classification tests for mixed, bound-exhaustion, and structural examples."""
 
 from dynkinlab import ClassificationStatus, DynkinType, QuasiCartanMatrix
 
@@ -15,10 +15,10 @@ def _matrix(size: int, edges: dict[tuple[int, int], int]) -> QuasiCartanMatrix:
     return QuasiCartanMatrix(rows)
 
 
-class TestPaperExamples:
-    """Verify the paper's Figure 1 and Example 3.1."""
+class TestMixedAndBoundExamples:
+    """Verify a directed mixed example and a bound-exhaustion example."""
 
-    def test_figure_one_is_b6(self) -> None:
+    def test_directed_mixed_example_is_b6(self) -> None:
         matrix = QuasiCartanMatrix(
             (
                 (2, -1, 1, 0, 0, 0),
@@ -36,7 +36,7 @@ class TestPaperExamples:
         assert result.components[0].dynkin_type == DynkinType("B", 6)
         assert result.verify() is True
 
-    def test_example_three_one_exhausts_the_bound(self) -> None:
+    def test_bound_exhaustion_example(self) -> None:
         matrix = QuasiCartanMatrix(
             (
                 (2, -1, -1, 1),
@@ -54,8 +54,8 @@ class TestPaperExamples:
         assert result.normal_form is None
 
 
-class TestThesisExamples:
-    """Verify the thesis's D-core and A-block constructions."""
+class TestStructuralExamples:
+    """Verify the 13-vertex D-core and 9-vertex A-block constructions."""
 
     def test_d_core_gluing_is_d13(self) -> None:
         matrix = _matrix(

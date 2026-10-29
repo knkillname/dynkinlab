@@ -1,7 +1,7 @@
 # SPDX-FileCopyrightText: 2026-present Mario Abarca <knkillname@gmail.com>
 #
 # SPDX-License-Identifier: MIT
-"""Paper-faithful cubic Dynkin classifier."""
+"""Exact cubic Dynkin classifier."""
 
 from collections.abc import Hashable, Iterable
 from dataclasses import dataclass
@@ -75,10 +75,11 @@ class _SymmetricState:
 class DynkinClassifier:
     """Classify positive definite quasi-Cartan matrices.
 
-    The implementation follows the paper's Stage 1 filter/preprocessing, Stage
-    2 bounded inflations, and Stage 3 graph classification. The class is a
-    namespace for the algorithm; use ``QuasiCartanMatrix.classify`` or
-    ``Bigraph.classify`` for the public entry points.
+    The classifier filters admissible components, applies a bounded flation
+    search that preserves the solid-arched invariant, and reads the resulting
+    solid normal form as a Dynkin type. The class is a namespace for the
+    algorithm; use ``QuasiCartanMatrix.classify`` or ``Bigraph.classify`` for
+    the public entry points.
     """
 
     G2_BOUND = 24
@@ -231,14 +232,14 @@ class DynkinClassifier:
             final_entries, steps, exhausted = cls._run_symmetric(array_entries, bound)
             if exhausted:
                 return cls._failure("bound exhausted", steps, bound)
-            return cls._stage_three(final_entries, steps, bound)
+            return cls._classify_normal_form(final_entries, steps, bound)
 
         if size <= 4:
             bound = cls.G2_BOUND
             final_entries, steps, exhausted = cls._run_naive(array_entries, bound)
             if exhausted:
                 return cls._failure("bound exhausted", steps, bound)
-            return cls._stage_three(final_entries, steps, bound)
+            return cls._classify_normal_form(final_entries, steps, bound)
 
         distinguished = cls._distinguished(array_entries)
         if distinguished is None:
@@ -261,11 +262,11 @@ class DynkinClassifier:
         steps = repair_steps + loop_steps
         if failure_reason is not None:
             return cls._failure(failure_reason, steps, bound)
-        return cls._stage_three(final_entries, steps, bound)
+        return cls._classify_normal_form(final_entries, steps, bound)
 
     @classmethod
     def _admissible(cls, entries: list[list[int]]) -> tuple[bool, str]:
-        """Return whether the component passes the paper's admissibility filter."""
+        """Return whether the component satisfies the admissibility conditions."""
         size = len(entries)
         for row in range(size):
             for column in range(row + 1, size):
@@ -387,11 +388,12 @@ class DynkinClassifier:
         distinguished: int,
         bound: int,
     ) -> tuple[npt.NDArray[np.int64], tuple[FlationStep, ...], str | None]:
-        """Run non-symmetric Stage 2 while preserving solid-arched.
+        """Run the bounded non-symmetric flation search while preserving solid-arched.
 
         Dotted edges are selected in ``G - x``. For each edge, both flation
         directions are considered; the first direction that keeps every arrow
-        solid is used. Lemma 4.2 guarantees such a direction exists.
+        solid is used. For admissible inputs, a direction preserving the
+        invariant always exists.
         """
         current = np.array(entries, dtype=np.int64, copy=True)
         others = [index for index in range(current.shape[0]) if index != distinguished]
@@ -461,7 +463,7 @@ class DynkinClassifier:
         return None
 
     @classmethod
-    def _stage_three(
+    def _classify_normal_form(
         cls,
         entries: npt.NDArray[np.int64],
         steps: tuple[FlationStep, ...],
@@ -505,7 +507,7 @@ class DynkinClassifier:
 
     @staticmethod
     def _bound(size: int) -> int:
-        """Return the paper's symmetric inflation bound."""
+        """Return the symmetric inflation bound for a component of this size."""
         if size < 4:
             return size * (size + 1) // 2
         if 6 <= size <= 8:

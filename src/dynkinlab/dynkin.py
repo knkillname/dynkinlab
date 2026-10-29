@@ -63,7 +63,7 @@ class DynkinClassification:
     steps : int
         Number of witness steps.
     bound : int
-        Applied paper bound.
+        Applied symmetric inflation bound.
     input : Bigraph
         Retained labeled input used by ``verify``.
     """

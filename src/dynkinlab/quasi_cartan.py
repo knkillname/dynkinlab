@@ -196,7 +196,7 @@ class QuasiCartanMatrix:
         target: int,
         dtype: npt.DTypeLike = object,
     ) -> npt.NDArray[Any]:
-        """Apply the paper's flation formula to an entry matrix.
+        """Apply the flation formula to an entry matrix.
 
         Parameters
         ----------
