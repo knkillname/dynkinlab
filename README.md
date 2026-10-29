@@ -13,6 +13,7 @@ Dynkin classifier. Value objects render as Markdown or HTML in Colab and Jupyter
 ## Requirements
 
 - Python 3.13 or newer
+- NumPy 2.1 or newer
 - NetworkX 3.7 or newer
 - matplotlib 3.10 or newer
 
@@ -28,8 +29,8 @@ In a Google Colab notebook, install the package in a cell:
 !pip install dynkinlab
 ```
 
-The current Colab CPU runtime ships Python 3.13, NetworkX 3.7, and matplotlib 3.10, so the package
-installs without extra setup.
+The current Colab CPU runtime ships Python 3.13, NumPy 2.1, NetworkX 3.7, and matplotlib 3.10, so
+the package installs without extra setup.
 
 ## Quick start
 

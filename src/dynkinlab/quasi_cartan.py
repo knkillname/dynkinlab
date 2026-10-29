@@ -5,18 +5,19 @@
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
+import numpy as np
+
+import dynkinlab
 from dynkinlab import display
 from dynkinlab.display import DisplayOptions
 from dynkinlab.inertia import Inertia
 from dynkinlab.quadratic_form import QuadraticForm
 from dynkinlab.symmetrizer import Symmetrizer
 
-if TYPE_CHECKING:
-    from dynkinlab.dynkin import DynkinClassification
-
 _DIAGONAL_VALUE = 2
+_MAX_SAFE_ENTRY = 2**31
+_MATRIX_NDIM = 2
 
 
 @dataclass(frozen=True, init=False)
@@ -169,7 +170,7 @@ class QuasiCartanMatrix:
         """Return the exact inertia of the symmetrized matrix."""
         return Inertia.from_matrix(self)
 
-    def classify(self) -> "DynkinClassification":
+    def classify(self) -> "dynkinlab.dynkin.DynkinClassification":
         """Classify this matrix using the cubic Dynkin classifier."""
         from dynkinlab.classifier import DynkinClassifier
 
@@ -183,8 +184,74 @@ class QuasiCartanMatrix:
         if not 0 <= index < size:
             raise ValueError(f"{name} must be between 0 and {size - 1}")
 
+    @staticmethod
+    def flate_entries(
+        entries: Iterable[Iterable[int]] | np.ndarray,
+        source: int,
+        target: int,
+        dtype: type | np.dtype = object,
+    ) -> np.ndarray:
+        """Apply the paper's flation formula to an entry matrix.
+
+        Parameters
+        ----------
+        entries : Iterable[Iterable[int]] | numpy.ndarray
+            Square integer matrix rows. The input is copied.
+        source : int
+            Source vertex index.
+        target : int
+            Target vertex index. Equal source and target performs a sign
+            inversion of every edge incident to the target.
+        dtype : type | numpy.dtype
+            Output dtype. Use ``object`` for exact arbitrary-precision
+            integers and ``numpy.int64`` for the classifier's bounded state.
+
+        Returns
+        -------
+        numpy.ndarray
+            The flated entries in the requested dtype.
+
+        Raises
+        ------
+        ValueError
+            If the input is empty or not square, an index is invalid, or an
+            ``int64`` result exceeds the supported entry range.
+        """
+        values = np.array(entries, dtype=dtype)
+        if values.ndim != _MATRIX_NDIM or values.shape[0] != values.shape[1]:
+            raise ValueError("matrix must be square")
+        size = values.shape[0]
+        if size == 0:
+            raise ValueError("matrix must have at least one row")
+        if isinstance(source, bool) or not isinstance(source, int):
+            raise ValueError("source must be an integer")
+        if isinstance(target, bool) or not isinstance(target, int):
+            raise ValueError("target must be an integer")
+        if not 0 <= source < size:
+            raise ValueError(f"source must be between 0 and {size - 1}")
+        if not 0 <= target < size:
+            raise ValueError(f"target must be between 0 and {size - 1}")
+
+        flated = values.copy()
+        if source == target:
+            flated[target, :] *= -1
+            flated[:, target] *= -1
+        else:
+            flated[target, :] = values[target, :] - values[target, source] * values[source, :]
+            flated[:, target] = values[:, target] - values[source, target] * values[:, source]
+            flated[target, target] = _DIAGONAL_VALUE
+
+        if np.issubdtype(flated.dtype, np.integer) and (
+            flated.max() > _MAX_SAFE_ENTRY or flated.min() < -_MAX_SAFE_ENTRY
+        ):
+            raise ValueError("flated entries exceed the supported int64 range")
+        return flated
+
     def flation(self, source: int, target: int) -> "QuasiCartanMatrix":
         """Apply the flation ``T_source,target`` and return a new matrix.
+
+        The public path uses object dtype so integer entries remain exact for
+        arbitrary Python integers.
 
         Parameters
         ----------
@@ -207,38 +274,8 @@ class QuasiCartanMatrix:
         size = self.dimension
         self._validate_index(source, size, "source")
         self._validate_index(target, size, "target")
-        old = self.entries
-
-        if source == target:
-            target_index = target
-            rows = [list(row) for row in old]
-            for index in range(size):
-                if index == target_index:
-                    continue
-                rows[target_index][index] = -old[target_index][index]
-                rows[index][target_index] = -old[index][target_index]
-            return QuasiCartanMatrix(tuple(tuple(row) for row in rows))
-
-        source_index = source
-        target_index = target
-        source_row = old[source_index]
-        target_row = old[target_index]
-        row_coefficient = old[target_index][source_index]
-        column_coefficient = old[source_index][target_index]
-        rows = [list(row) for row in old]
-
-        for column in range(size):
-            if column == target_index:
-                continue
-            rows[target_index][column] = target_row[column] - row_coefficient * source_row[column]
-        for row in range(size):
-            if row == target_index:
-                continue
-            rows[row][target_index] = (
-                old[row][target_index] - column_coefficient * old[row][source_index]
-            )
-        rows[target_index][target_index] = _DIAGONAL_VALUE
-        return QuasiCartanMatrix(tuple(tuple(row) for row in rows))
+        flated = self.flate_entries(self.entries, source, target, object)
+        return QuasiCartanMatrix(tuple(map(tuple, flated.tolist())))
 
     @staticmethod
     def _effective_options(options: DisplayOptions | None) -> DisplayOptions:

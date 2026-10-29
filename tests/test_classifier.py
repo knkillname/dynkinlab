@@ -33,6 +33,15 @@ _TYPES = (
     DynkinType("G", 2),
 )
 
+_INDEFINITE = (
+    (2, 1, 1, 0, 1, -1),
+    (1, 2, -1, 1, -1, 1),
+    (1, -1, 2, 1, -1, 0),
+    (0, 1, 1, 2, 0, -1),
+    (1, -1, -1, 0, 2, 0),
+    (-1, 1, 0, -1, 0, 2),
+)
+
 
 class TestCanonicalClassification:
     """Verify every canonical finite type."""
@@ -109,6 +118,15 @@ class TestNonFinite:
         assert result.inertia.is_degenerate
         assert result.normal_form is None
         assert result.verify() is False
+
+    def test_indefinite_component_is_rejected_before_flations(self) -> None:
+        result = QuasiCartanMatrix(_INDEFINITE).classify()
+
+        assert result.status is ClassificationStatus.NOT_POSITIVE_DEFINITE
+        assert result.reason == "indefinite"
+        assert result.steps == 0
+        assert len(result.witness) == 0
+        assert result.inertia.negative > 0
 
     def test_negative_definite_is_not_admissible(self) -> None:
         result = QuasiCartanMatrix(((2, 3), (3, 2))).classify()
@@ -192,6 +210,26 @@ class TestDisconnected:
             DynkinType("A", 2),
         ]
         assert QuasiCartanMatrix(((2,),)).classify().components[0].dynkin_type == DynkinType("A", 1)
+
+    def test_indefinite_component_preserves_earlier_classification(self) -> None:
+        first = DynkinType("A", 2).cartan_matrix()
+        second = QuasiCartanMatrix(_INDEFINITE)
+        size = first.dimension + second.dimension
+        rows = [[0] * size for _ in range(size)]
+        for row in range(first.dimension):
+            for column in range(first.dimension):
+                rows[row][column] = first.entries[row][column]
+        for row in range(second.dimension):
+            for column in range(second.dimension):
+                rows[first.dimension + row][first.dimension + column] = second.entries[row][column]
+
+        result = QuasiCartanMatrix(rows).classify()
+
+        assert result.status is ClassificationStatus.NOT_POSITIVE_DEFINITE
+        assert result.reason == "indefinite"
+        assert result.components == (ComponentClassification((0, 1), DynkinType("A", 2)),)
+        assert result.components[0].labels == (0, 1)
+        assert result.steps == 0
 
 
 class TestLabelsAndWitness:

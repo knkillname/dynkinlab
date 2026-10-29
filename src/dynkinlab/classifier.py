@@ -3,8 +3,10 @@
 # SPDX-License-Identifier: MIT
 """Paper-faithful cubic Dynkin classifier."""
 
-from collections.abc import Hashable, Iterable, Sequence
+from collections.abc import Hashable, Iterable
 from dataclasses import dataclass
+
+import numpy as np
 
 from dynkinlab.bigraph import Bigraph
 from dynkinlab.dynkin import (
@@ -34,19 +36,18 @@ class _ComponentOutcome:
 class _SymmetricState:
     """Mutable symmetric state with an O(n) dotted-edge index."""
 
-    def __init__(self, entries: Sequence[Sequence[int]]) -> None:
-        self.entries = [list(row) for row in entries]
-        self.size = len(self.entries)
+    def __init__(self, entries: np.ndarray) -> None:
+        self.entries = np.array(entries, dtype=np.int64, copy=True)
+        self.size = self.entries.shape[0]
         self.dotted: set[tuple[int, int]] = set()
         self._rebuild_dotted()
 
     def _rebuild_dotted(self) -> None:
         """Rebuild the dotted-edge set from the current entries."""
-        self.dotted.clear()
-        for row in range(self.size):
-            for column in range(row + 1, self.size):
-                if self.entries[row][column] > 0 and self.entries[column][row] > 0:
-                    self.dotted.add((row, column))
+        mask = (self.entries > 0) & (self.entries.T > 0)
+        self.dotted = {
+            (int(row), int(column)) for row, column in np.argwhere(np.triu(mask, k=1)).tolist()
+        }
 
     def next_dotted(self) -> tuple[int, int] | None:
         """Return one dotted edge, or None when the matrix is solid."""
@@ -56,14 +57,19 @@ class _SymmetricState:
 
     def flate(self, source: int, target: int) -> None:
         """Apply a flation and update the dotted-edge index in O(n)."""
-        self.entries = DynkinClassifier._flate_entries(self.entries, source, target)
+        self.entries = QuasiCartanMatrix.flate_entries(
+            self.entries,
+            source,
+            target,
+            np.int64,
+        )
         for index in range(self.size):
             if index != target:
                 self.dotted.discard((min(target, index), max(target, index)))
         for index in range(self.size):
             if index == target:
                 continue
-            if self.entries[target][index] > 0 and self.entries[index][target] > 0:
+            if self.entries[target, index] > 0 and self.entries[index, target] > 0:
                 self.dotted.add((min(target, index), max(target, index)))
 
 
@@ -177,14 +183,14 @@ class DynkinClassifier:
                         0,
                         matrix.entries,
                     )
-                canonical = cls._flate_entries(entries, 0, 0)
+                canonical = QuasiCartanMatrix.flate_entries(entries, 0, 0, object)
                 return _ComponentOutcome(
                     ClassificationStatus.CLASSIFIED,
                     "",
                     DynkinType("G", 2),
                     (FlationStep(0, 0),),
                     0,
-                    tuple(tuple(row) for row in canonical),
+                    tuple(map(tuple, canonical.tolist())),
                 )
 
         if size == 1:
@@ -208,22 +214,34 @@ class DynkinClassifier:
                 None,
             )
 
+        inertia = Inertia.from_matrix(matrix)
+        if inertia.negative > 0:
+            return _ComponentOutcome(
+                ClassificationStatus.NOT_POSITIVE_DEFINITE,
+                "indefinite",
+                None,
+                (),
+                0,
+                None,
+            )
+
+        array_entries = np.array(entries, dtype=np.int64)
         symmetric = matrix.is_symmetric
         if symmetric:
             bound = cls._bound(size)
-            final_entries, steps, exhausted = cls._run_symmetric(entries, bound)
+            final_entries, steps, exhausted = cls._run_symmetric(array_entries, bound)
             if exhausted:
                 return cls._failure("bound exhausted", steps, bound)
             return cls._stage_three(final_entries, steps, bound)
 
         if size <= 4:
             bound = cls.G2_BOUND
-            final_entries, steps, exhausted = cls._run_naive(entries, bound)
+            final_entries, steps, exhausted = cls._run_naive(array_entries, bound)
             if exhausted:
                 return cls._failure("bound exhausted", steps, bound)
             return cls._stage_three(final_entries, steps, bound)
 
-        distinguished = cls._distinguished(entries)
+        distinguished = cls._distinguished(array_entries)
         if distinguished is None:
             return _ComponentOutcome(
                 ClassificationStatus.NOT_POSITIVE_DEFINITE,
@@ -234,7 +252,7 @@ class DynkinClassifier:
                 None,
             )
 
-        repaired, repair_steps = cls._make_solid_arched(entries, distinguished)
+        repaired, repair_steps = cls._make_solid_arched(array_entries, distinguished)
         bound = cls._bound(size - 1)
         final_entries, loop_steps, failure_reason = cls._run_distinguished(
             repaired,
@@ -269,15 +287,15 @@ class DynkinClassifier:
         return True, ""
 
     @classmethod
-    def _distinguished(cls, entries: list[list[int]]) -> int | None:
+    def _distinguished(cls, entries: np.ndarray) -> int | None:
         """Return a source/sink that carries every arrow, if one exists."""
         arrows = cls._arrows(entries)
         if not arrows:
             return None
-        size = len(entries)
+        size = entries.shape[0]
         for vertex in range(size):
             has_undirected = any(
-                entries[vertex][other] == entries[other][vertex] != 0
+                entries[vertex, other] == entries[other, vertex] != 0
                 for other in range(size)
                 if other != vertex
             )
@@ -292,15 +310,15 @@ class DynkinClassifier:
     @classmethod
     def _arrows(
         cls,
-        entries: list[list[int]],
+        entries: np.ndarray,
     ) -> list[tuple[int, int, int, bool]]:
         """Return arrows as (source, target, multiplicity, dotted)."""
-        size = len(entries)
+        size = entries.shape[0]
         arrows: list[tuple[int, int, int, bool]] = []
         for row in range(size):
             for column in range(row + 1, size):
-                forward = entries[row][column]
-                backward = entries[column][row]
+                forward = int(entries[row, column])
+                backward = int(entries[column, row])
                 if forward == backward:
                     continue
                 if forward == 0 or backward == 0:
@@ -323,11 +341,11 @@ class DynkinClassifier:
     @classmethod
     def _make_solid_arched(
         cls,
-        entries: list[list[int]],
+        entries: np.ndarray,
         distinguished: int,
-    ) -> tuple[list[list[int]], tuple[FlationStep, ...]]:
+    ) -> tuple[np.ndarray, tuple[FlationStep, ...]]:
         """Flip dotted arrows incident on the distinguished vertex."""
-        current = [list(row) for row in entries]
+        current = np.array(entries, dtype=np.int64, copy=True)
         steps: list[FlationStep] = []
         for source, target, _, dotted in cls._arrows(current):
             if not dotted:
@@ -338,7 +356,7 @@ class DynkinClassifier:
                 other = source
             else:
                 raise ValueError("distinguished vertex does not carry every arrow")
-            current = cls._flate_entries(current, other, other)
+            current = QuasiCartanMatrix.flate_entries(current, other, other, np.int64)
             steps.append(FlationStep(other, other))
         if any(dotted for _, _, _, dotted in cls._arrows(current)):
             raise ValueError("could not make the bigraph solid-arched")
@@ -347,9 +365,9 @@ class DynkinClassifier:
     @classmethod
     def _run_symmetric(
         cls,
-        entries: list[list[int]],
+        entries: np.ndarray,
         bound: int,
-    ) -> tuple[list[list[int]], tuple[FlationStep, ...], bool]:
+    ) -> tuple[np.ndarray, tuple[FlationStep, ...], bool]:
         """Run bounded inflations on a symmetric component."""
         state = _SymmetricState(entries)
         steps: list[FlationStep] = []
@@ -366,35 +384,40 @@ class DynkinClassifier:
     @classmethod
     def _run_distinguished(
         cls,
-        entries: list[list[int]],
+        entries: np.ndarray,
         distinguished: int,
         bound: int,
-    ) -> tuple[list[list[int]], tuple[FlationStep, ...], str | None]:
+    ) -> tuple[np.ndarray, tuple[FlationStep, ...], str | None]:
         """Run non-symmetric Stage 2 while preserving solid-arched.
 
         Dotted edges are selected in ``G - x``. For each edge, both flation
         directions are considered; the first direction that keeps every arrow
         solid is used. Lemma 4.2 guarantees such a direction exists.
         """
-        current = [list(row) for row in entries]
-        others = [index for index in range(len(current)) if index != distinguished]
+        current = np.array(entries, dtype=np.int64, copy=True)
+        others = [index for index in range(current.shape[0]) if index != distinguished]
         steps: list[FlationStep] = []
         while True:
             dotted = [
                 (row, column)
                 for row in others
                 for column in others
-                if row < column and current[row][column] > 0 and current[column][row] > 0
+                if row < column and current[row, column] > 0 and current[column, row] > 0
             ]
             if not dotted:
                 return current, tuple(steps), None
             if len(steps) >= bound:
                 return current, tuple(steps), "bound exhausted"
 
-            chosen: tuple[int, int, list[list[int]]] | None = None
+            chosen: tuple[int, int, np.ndarray] | None = None
             for row, column in dotted:
                 for source, target in ((row, column), (column, row)):
-                    candidate = cls._flate_entries(current, source, target)
+                    candidate = QuasiCartanMatrix.flate_entries(
+                        current,
+                        source,
+                        target,
+                        np.int64,
+                    )
                     if cls._solid_arched(candidate):
                         chosen = (source, target, candidate)
                         break
@@ -407,18 +430,18 @@ class DynkinClassifier:
             steps.append(FlationStep(source, target))
 
     @classmethod
-    def _solid_arched(cls, entries: list[list[int]]) -> bool:
+    def _solid_arched(cls, entries: np.ndarray) -> bool:
         """Return whether every arrow is solid."""
         return all(not dotted for _, _, _, dotted in cls._arrows(entries))
 
     @classmethod
     def _run_naive(
         cls,
-        entries: list[list[int]],
+        entries: np.ndarray,
         bound: int,
-    ) -> tuple[list[list[int]], tuple[FlationStep, ...], bool]:
+    ) -> tuple[np.ndarray, tuple[FlationStep, ...], bool]:
         """Run the non-symmetric n <= 4 bounded inflation loop."""
-        current = [list(row) for row in entries]
+        current = np.array(entries, dtype=np.int64, copy=True)
         steps: list[FlationStep] = []
         while True:
             pair = cls._first_positive(current)
@@ -427,29 +450,27 @@ class DynkinClassifier:
             if len(steps) >= bound:
                 return current, tuple(steps), True
             source, target = pair
-            current = cls._flate_entries(current, source, target)
+            current = QuasiCartanMatrix.flate_entries(current, source, target, np.int64)
             steps.append(FlationStep(source, target))
 
     @staticmethod
-    def _first_positive(entries: list[list[int]]) -> tuple[int, int] | None:
+    def _first_positive(entries: np.ndarray) -> tuple[int, int] | None:
         """Return the first positive off-diagonal pair."""
-        size = len(entries)
-        for row in range(size):
-            for column in range(size):
-                if row != column and entries[row][column] > 0:
-                    return row, column
+        for row, column in np.argwhere(entries > 0).tolist():
+            if row != column:
+                return int(row), int(column)
         return None
 
     @classmethod
     def _stage_three(
         cls,
-        entries: list[list[int]],
+        entries: np.ndarray,
         steps: tuple[FlationStep, ...],
         bound: int,
     ) -> _ComponentOutcome:
         """Classify the final solid normal form."""
         try:
-            matrix = QuasiCartanMatrix(entries)
+            matrix = QuasiCartanMatrix(tuple(map(tuple, entries.tolist())))
         except ValueError:
             return cls._failure("normal form is not a Dynkin diagram", steps, bound)
         dynkin_type = DynkinType.from_matrix(matrix)
@@ -491,35 +512,3 @@ class DynkinClassifier:
         if 6 <= size <= 8:
             return size * (15 * size - 168) + 504
         return size * (size - 1)
-
-    @staticmethod
-    def _flate_entries(
-        entries: Sequence[Sequence[int]],
-        source: int,
-        target: int,
-    ) -> list[list[int]]:
-        """Apply the paper's flation formula to mutable rows."""
-        size = len(entries)
-        old = [list(row) for row in entries]
-        if source == target:
-            for index in range(size):
-                if index == target:
-                    continue
-                old[target][index] = -old[target][index]
-                old[index][target] = -old[index][target]
-            return old
-
-        source_row = entries[source]
-        target_row = entries[target]
-        row_coefficient = entries[target][source]
-        column_coefficient = entries[source][target]
-        for column in range(size):
-            if column == target:
-                continue
-            old[target][column] = target_row[column] - row_coefficient * source_row[column]
-        for row in range(size):
-            if row == target:
-                continue
-            old[row][target] = entries[row][target] - column_coefficient * entries[row][source]
-        old[target][target] = 2
-        return old

@@ -3,12 +3,24 @@
 # SPDX-License-Identifier: MIT
 """Property-test the optimized classifier against a naive reference."""
 
+import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 from hypothesis.strategies import DrawFn
 
 from dynkinlab import ClassificationStatus, DynkinType, QuasiCartanMatrix
 from dynkinlab.symmetrizer import Symmetrizer
+
+_TYPES = (
+    DynkinType("A", 1),
+    DynkinType("A", 13),
+    DynkinType("B", 4),
+    DynkinType("C", 4),
+    DynkinType("D", 13),
+    DynkinType("E", 6),
+    DynkinType("F", 4),
+    DynkinType("G", 2),
+)
 
 
 @st.composite
@@ -69,3 +81,66 @@ class TestNaiveOracle:
             assert naive == tuple(component.dynkin_type for component in result.components)
         else:
             assert naive is None
+
+
+class TestDomainEquivalence:
+    """Verify the int64 classifier across the supported input families."""
+
+    @pytest.mark.parametrize("dynkin_type", _TYPES)
+    def test_canonical_types_classify(self, dynkin_type: DynkinType) -> None:
+        result = dynkin_type.cartan_matrix().classify()
+
+        assert result.status is ClassificationStatus.CLASSIFIED
+        assert result.components[0].dynkin_type == dynkin_type
+        assert result.steps == len(result.witness)
+        if dynkin_type != DynkinType("G", 2):
+            assert result.steps <= result.bound
+        assert result.verify() is True
+
+    @pytest.mark.parametrize("dynkin_type", _TYPES)
+    def test_flated_types_classify(self, dynkin_type: DynkinType) -> None:
+        bigraph = dynkin_type.bigraph()
+        for edge in bigraph.edges:
+            bigraph = bigraph.flation(edge.source, edge.target)
+
+        result = bigraph.classify()
+
+        assert result.status is ClassificationStatus.CLASSIFIED
+        assert result.components[0].dynkin_type == dynkin_type
+        assert result.steps == len(result.witness)
+        if dynkin_type != DynkinType("G", 2):
+            assert result.steps <= result.bound
+        assert result.verify() is True
+
+    @pytest.mark.parametrize("dynkin_type", _TYPES)
+    def test_permuted_types_classify(self, dynkin_type: DynkinType) -> None:
+        matrix = dynkin_type.cartan_matrix()
+        permutation = tuple(reversed(range(dynkin_type.rank)))
+        permuted = QuasiCartanMatrix(
+            tuple(
+                tuple(matrix.entries[row][column] for column in permutation) for row in permutation
+            ),
+        )
+
+        result = permuted.classify()
+
+        assert result.status is ClassificationStatus.CLASSIFIED
+        assert result.components[0].dynkin_type == dynkin_type
+        assert result.steps == len(result.witness)
+        if dynkin_type != DynkinType("G", 2):
+            assert result.steps <= result.bound
+        assert result.verify() is True
+
+    @pytest.mark.parametrize("size", [3, 4, 6, 13])
+    def test_affine_cycles_terminate(self, size: int) -> None:
+        rows = [[2 if row == column else 0 for column in range(size)] for row in range(size)]
+        for row in range(size):
+            column = (row + 1) % size
+            rows[row][column] = -1
+            rows[column][row] = -1
+
+        result = QuasiCartanMatrix(rows).classify()
+
+        assert result.status is ClassificationStatus.NOT_POSITIVE_DEFINITE
+        assert result.inertia.is_degenerate
+        assert result.steps <= result.bound

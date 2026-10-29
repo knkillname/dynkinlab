@@ -9,8 +9,8 @@ check its version.
 
 ## Install locally
 
-DynkinLab requires Python 3.13 or newer. NetworkX 3.7 or newer and matplotlib 3.10 or newer are
-installed as runtime dependencies.
+DynkinLab requires Python 3.13 or newer. NumPy 2.1 or newer, NetworkX 3.7 or newer, and
+matplotlib 3.10 or newer are installed as runtime dependencies.
 
 ```{code-block} console
 pip install dynkinlab

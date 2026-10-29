@@ -8,6 +8,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import override
 
+import networkx as nx
+
 from dynkinlab.bigraph import Bigraph, EdgeStyle
 from dynkinlab.flation import FlationSequence
 from dynkinlab.inertia import Inertia
@@ -284,13 +286,13 @@ class DynkinType:
         if any(not edge.directed and edge.multiplicity != 1 for edge in edges):
             return None
 
-        adjacency: list[set[int]] = [set() for _ in range(size)]
+        graph = nx.Graph()
+        graph.add_nodes_from(range(size))
         arrows: list[tuple[int, int, int]] = []
         for edge in edges:
             source = bigraph.index(edge.source)
             target = bigraph.index(edge.target)
-            adjacency[source].add(target)
-            adjacency[target].add(source)
+            graph.add_edge(source, target)
             if edge.directed:
                 if edge.multiplicity not in {2, 3}:
                     return None
@@ -298,12 +300,10 @@ class DynkinType:
 
         if len(arrows) > 1:
             return None
-        if sum(len(neighbours) for neighbours in adjacency) // 2 != size - 1:
-            return None
-        if len(cls._distances(adjacency, 0)) != size:
+        if not nx.is_tree(graph):
             return None
 
-        degrees = [len(neighbours) for neighbours in adjacency]
+        degrees = [graph.degree(vertex) for vertex in range(size)]
         if max(degrees) > 3:
             return None
         if sum(degree == 3 for degree in degrees) > 1:
@@ -314,7 +314,7 @@ class DynkinType:
         if branch is not None:
             if arrows:
                 return None
-            distances = cls._distances(adjacency, branch)
+            distances = nx.single_source_shortest_path_length(graph, branch)
             at_two = sum(distance == 2 for distance in distances.values())
             at_three = sum(distance == 3 for distance in distances.values())
             if at_two <= 1:
@@ -345,17 +345,3 @@ class DynkinType:
     def from_matrix(cls, matrix: QuasiCartanMatrix) -> "DynkinType | None":
         """Classify the mixed bigraph of a quasi-Cartan matrix."""
         return cls.from_bigraph(Bigraph(matrix))
-
-    @staticmethod
-    def _distances(adjacency: list[set[int]], root: int) -> dict[int, int]:
-        """Return breadth-first distances from ``root``."""
-        distances = {root: 0}
-        queue = [root]
-        while queue:
-            row = queue.pop()
-            for column in adjacency[row]:
-                if column in distances:
-                    continue
-                distances[column] = distances[row] + 1
-                queue.append(column)
-        return distances

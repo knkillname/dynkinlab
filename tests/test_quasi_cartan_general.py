@@ -3,46 +3,18 @@
 # SPDX-License-Identifier: MIT
 """Tests for general symmetrizable quasi-Cartan matrices and flation."""
 
+import random
+
+import numpy as np
 import pytest
 
 from dynkinlab.inertia import Inertia
-from dynkinlab.matrix import SymmetrizedMatrix
-from dynkinlab.quadratic_form import QuadraticForm
 from dynkinlab.quasi_cartan import QuasiCartanMatrix
+from dynkinlab.symmetrizer import Symmetrizer
 
 _B2 = ((2, -1), (-2, 2))
 _B2_SYMMETRIZED = ((4, -2), (-2, 2))
 _A2 = ((2, -1), (-1, 2))
-
-
-class TestSymmetrizedMatrix:
-    """Verify the explicit symmetrized matrix adapter."""
-
-    def test_dimension_and_entries(self) -> None:
-        matrix = SymmetrizedMatrix(((4, -2), (-2, 2)))
-
-        assert matrix.dimension == 2
-        assert matrix.entries == ((4, -2), (-2, 2))
-
-    @pytest.mark.parametrize(
-        "entries",
-        [
-            (),
-            ((), ()),
-            ((4, -2), (-2,)),
-            ((4, "x"), ("x", 4)),
-            ((4, True), (True, 4)),
-        ],
-    )
-    def test_invalid_adapter_input_is_rejected(self, entries: object) -> None:
-        with pytest.raises(ValueError):
-            SymmetrizedMatrix(entries)  # type: ignore[arg-type]
-
-    def test_form_uses_half_the_adapter_diagonal(self) -> None:
-        form = QuadraticForm(SymmetrizedMatrix(((4, 0), (0, 4))))
-
-        assert form.evaluate((1, 0)) == 2
-        assert form.evaluate((1, 1)) == 4
 
 
 class TestGeneralConstruction:
@@ -102,6 +74,26 @@ class TestGeneralConstruction:
     def test_strict_symmetric_factory_rejects_non_symmetric(self) -> None:
         with pytest.raises(ValueError, match="symmetric"):
             QuasiCartanMatrix.symmetric(_B2)
+
+
+class TestComponents:
+    """Verify deterministic connected-component ordering."""
+
+    def test_components_are_sorted_by_smallest_index(self) -> None:
+        base = (
+            (2, -1, 0, 0),
+            (-1, 2, 0, 0),
+            (0, 0, 2, -1),
+            (0, 0, -1, 2),
+        )
+        permutation = (0, 2, 1, 3)
+        entries = tuple(
+            tuple(base[permutation[row]][permutation[column]] for column in range(4))
+            for row in range(4)
+        )
+
+        assert Symmetrizer.components(entries) == ((0, 2), (1, 3))
+        assert Symmetrizer.components(entries) == ((0, 2), (1, 3))
 
 
 class TestGeneralFormAndInertia:
@@ -168,3 +160,91 @@ class TestFlation:
 
         with pytest.raises(ValueError, match="source|target"):
             matrix.flation(source, target)  # type: ignore[arg-type]
+
+
+def _reference_flate(
+    entries: tuple[tuple[int, ...], ...],
+    source: int,
+    target: int,
+) -> tuple[tuple[int, ...], ...]:
+    """Return the paper's flation formula using independent list arithmetic."""
+    size = len(entries)
+    rows = [list(row) for row in entries]
+    if source == target:
+        for index in range(size):
+            if index == target:
+                continue
+            rows[target][index] = -entries[target][index]
+            rows[index][target] = -entries[index][target]
+        return tuple(tuple(row) for row in rows)
+
+    for column in range(size):
+        if column == target:
+            continue
+        rows[target][column] = (
+            entries[target][column] - entries[target][source] * entries[source][column]
+        )
+    for row in range(size):
+        if row == target:
+            continue
+        rows[row][target] = entries[row][target] - entries[source][target] * entries[row][source]
+    rows[target][target] = 2
+    return tuple(tuple(row) for row in rows)
+
+
+class TestFlateEntries:
+    """Verify the shared flation helper for exact and bounded dtypes."""
+
+    def test_object_and_int64_match_for_small_entries(self) -> None:
+        entries = ((2, 1, 0), (1, 2, 1), (0, 1, 2))
+
+        exact = QuasiCartanMatrix.flate_entries(entries, 0, 1, object)
+        bounded = QuasiCartanMatrix.flate_entries(entries, 0, 1, np.int64)
+
+        assert tuple(map(tuple, exact.tolist())) == tuple(map(tuple, bounded.tolist()))
+
+    def test_sign_inversion(self) -> None:
+        entries = ((2, 1), (1, 2))
+
+        result = QuasiCartanMatrix.flate_entries(entries, 1, 1, object)
+
+        assert tuple(map(tuple, result.tolist())) == ((2, -1), (-1, 2))
+
+    def test_object_dtype_keeps_huge_integers_exact(self) -> None:
+        huge = 2**80
+        matrix = QuasiCartanMatrix(((2, huge), (huge, 2)))
+
+        flated = matrix.flation(0, 1)
+
+        assert flated.entries == ((2, -huge), (-huge, 2))
+        assert flated.flation(0, 1) == matrix
+
+    def test_int64_overflow_guard(self) -> None:
+        large = 2**31 + 1
+        entries = np.array(((2, large), (large, 2)), dtype=np.int64)
+
+        with pytest.raises(ValueError, match="int64"):
+            QuasiCartanMatrix.flate_entries(entries, 0, 1, np.int64)
+
+    def test_invalid_shape_and_indices_are_rejected(self) -> None:
+        with pytest.raises(ValueError, match="square"):
+            QuasiCartanMatrix.flate_entries(((2, 1),), 0, 1, object)
+        with pytest.raises(ValueError, match="source"):
+            QuasiCartanMatrix.flate_entries(((2, 1), (1, 2)), -1, 1, object)
+        with pytest.raises(ValueError, match="target"):
+            QuasiCartanMatrix.flate_entries(((2, 1), (1, 2)), 0, 2, object)
+
+    def test_randomized_reference_matches(self) -> None:
+        rng = random.Random(1234)
+        for size in range(1, 5):
+            for _ in range(20):
+                entries = tuple(
+                    tuple(2 if row == column else rng.randint(-5, 5) for column in range(size))
+                    for row in range(size)
+                )
+                for source in range(size):
+                    for target in range(size):
+                        expected = _reference_flate(entries, source, target)
+                        actual = QuasiCartanMatrix.flate_entries(entries, source, target, object)
+
+                        assert tuple(map(tuple, actual.tolist())) == expected

@@ -243,9 +243,11 @@ labeled = Bigraph(matrix, ("a", "b", "c", "d", "e")).classify()
 assert labeled.components[0].labels == ("a", "b", "c", "d", "e")
 ```
 
-The classifier is exact and bounded. `NOT_ADMISSIBLE` reports a filter failure; `NOT_POSITIVE_DEFINITE`
-reports bound exhaustion or a non-Dynkin normal form. G2 is handled as a documented O(1) extension
-to the paper's admissible class.
+The classifier is exact and bounded. `NOT_ADMISSIBLE` reports a filter failure. Admissible indefinite
+components are rejected by exact inertia before any flation, so the result reports
+`NOT_POSITIVE_DEFINITE` with reason `indefinite`, zero steps, and an empty witness. Non-negative
+components keep the bounded behavior, where `NOT_POSITIVE_DEFINITE` reports bound exhaustion or a
+non-Dynkin normal form. G2 is handled as a documented O(1) extension to the paper's admissible class.
 
 ## Classification display
 

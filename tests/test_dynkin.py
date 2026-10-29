@@ -76,6 +76,13 @@ class TestCanonicalTypes:
     def test_canonical_bigraph_has_expected_size(self, dynkin_type: DynkinType) -> None:
         assert dynkin_type.bigraph().dimension == dynkin_type.rank
 
+    def test_graph_classification_is_repeatable(self) -> None:
+        matrix = DynkinType("B", 5).cartan_matrix()
+        first = DynkinType.from_matrix(matrix)
+
+        assert first == DynkinType("B", 5)
+        assert all(DynkinType.from_matrix(matrix) == first for _ in range(5))
+
 
 class TestStageThree:
     """Verify non-Dynkin graphs are rejected."""

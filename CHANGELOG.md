@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- NumPy 2.1 or newer is now a declared runtime dependency, used for the classifier's bounded
+  integer state.
 - The initial typed `dynkinlab` package skeleton, built with Hatchling and targeting Python 3.13.
 - Immutable `QuasiCartanMatrix` values for symmetrizable integer matrices with diagonal 2, canonical
   minimal-trace symmetrizers, a strict `symmetric()` factory, and generalized flation.
@@ -23,3 +25,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A pinned Colab compatibility smoke gate for the official CPU runtime image.
 - Sphinx documentation, a versioned pre-push hook, and a CI workflow for checks, tests, packaging,
   documentation, and Colab compatibility.
+
+### Changed
+
+- Admissible indefinite components are now rejected by exact inertia with reason `indefinite`, zero
+  flation steps, and an empty witness. Non-negative components keep the bounded flation behavior.
+- `SymmetrizedMatrix` was removed from `dynkinlab.matrix`; `MatrixLike` remains the read-only
+  protocol used by `QuadraticForm` and `Inertia`.

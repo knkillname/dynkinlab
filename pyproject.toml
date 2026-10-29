@@ -25,6 +25,7 @@ classifiers = [
   "Typing :: Typed",
 ]
 dependencies = [
+  "numpy>=2.1",
   "networkx>=3.7",
   "matplotlib>=3.10",
 ]
@@ -140,5 +141,4 @@ fail_under = 80
 exclude_lines = [
   "no cov",
   "if __name__ == .__main__.:",
-  "if TYPE_CHECKING:",
 ]

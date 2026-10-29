@@ -6,6 +6,9 @@
 from collections.abc import Iterable
 from fractions import Fraction
 from math import gcd, lcm
+from typing import cast
+
+import networkx as nx
 
 
 class Symmetrizer:
@@ -113,27 +116,23 @@ class Symmetrizer:
         Returns
         -------
         tuple[tuple[int, ...], ...]
-            Components as sorted vertex-index tuples.
+            Components as sorted vertex-index tuples, ordered by their
+            smallest vertex index.
         """
         size = len(entries)
-        unseen = set(range(size))
-        components: list[tuple[int, ...]] = []
-        while unseen:
-            root = min(unseen)
-            unseen.remove(root)
-            queue = [root]
-            component = [root]
-            while queue:
-                row = queue.pop()
-                for column in range(size):
-                    if column == row or column not in unseen:
-                        continue
-                    if entries[row][column] == 0 and entries[column][row] == 0:
-                        continue
-                    unseen.remove(column)
-                    queue.append(column)
-                    component.append(column)
-            components.append(tuple(sorted(component)))
+        graph = nx.Graph()
+        graph.add_nodes_from(range(size))
+        graph.add_edges_from(
+            (row, column)
+            for row in range(size)
+            for column in range(row + 1, size)
+            if entries[row][column] or entries[column][row]
+        )
+        raw_components = cast(Iterable[set[int]], nx.connected_components(graph))
+        components = sorted(
+            (tuple(sorted(component)) for component in raw_components),
+            key=lambda component: component[0],
+        )
         return tuple(components)
 
     @classmethod

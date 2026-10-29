@@ -118,6 +118,7 @@ jobs:
           assert metadata["Version"] == dynkinlab.__version__
           assert metadata["Requires-Python"] == ">=3.13"
           requirements = metadata.get_all("Requires-Dist") or []
+          assert any("numpy>=2.1" in requirement for requirement in requirements)
           assert any("networkx>=3.7" in requirement for requirement in requirements)
           assert any("matplotlib>=3.10" in requirement for requirement in requirements)
           PY

@@ -7,14 +7,11 @@ import html
 from collections.abc import Hashable, Iterable
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import TYPE_CHECKING
 
+import dynkinlab
 from dynkinlab import display
 from dynkinlab.display import DisplayOptions
 from dynkinlab.quasi_cartan import QuasiCartanMatrix
-
-if TYPE_CHECKING:
-    from dynkinlab.dynkin import DynkinClassification
 
 
 class EdgeStyle(StrEnum):
@@ -288,7 +285,7 @@ class Bigraph:
             self.labels,
         )
 
-    def classify(self) -> "DynkinClassification":
+    def classify(self) -> "dynkinlab.dynkin.DynkinClassification":
         """Classify the underlying matrix while preserving labels."""
         from dynkinlab.classifier import DynkinClassifier
 

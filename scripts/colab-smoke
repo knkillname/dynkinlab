@@ -53,6 +53,7 @@ import sys
 
 import matplotlib
 import networkx
+import numpy
 
 
 def release(value: str) -> tuple[int, ...]:
@@ -60,6 +61,7 @@ def release(value: str) -> tuple[int, ...]:
 
 
 assert sys.version_info[:2] == (3, 13), sys.version
+assert release(numpy.__version__) >= (2, 1), numpy.__version__
 assert release(networkx.__version__) >= (3, 7), networkx.__version__
 assert release(matplotlib.__version__) >= (3, 10), matplotlib.__version__
 
@@ -69,6 +71,7 @@ assert isinstance(dynkinlab.__version__, str)
 assert dynkinlab.__version__
 
 print(f"Python {sys.version.split()[0]}")
+print(f"NumPy {numpy.__version__}")
 print(f"NetworkX {networkx.__version__}")
 print(f"matplotlib {matplotlib.__version__}")
 print(f"dynkinlab {dynkinlab.__version__}")

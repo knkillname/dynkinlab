@@ -8,7 +8,7 @@ Defines the installable typed package foundation and the quality gates that ever
 
 ### Requirement: Supported Python and dependency floors
 
-The package MUST require Python 3.13 or newer and MUST declare `networkx>=3.7` and `matplotlib>=3.10` as runtime dependencies.
+The package MUST require Python 3.13 or newer and MUST declare `numpy>=2.1`, `networkx>=3.7`, and `matplotlib>=3.10` as runtime dependencies.
 
 #### Scenario: Installation on the supported interpreter
 
@@ -23,7 +23,7 @@ The package MUST require Python 3.13 or newer and MUST declare `networkx>=3.7` a
 #### Scenario: Dependency floors are declared
 
 - **WHEN** the installed distribution metadata is inspected
-- **THEN** it declares `networkx>=3.7` and `matplotlib>=3.10`
+- **THEN** it declares `numpy>=2.1`, `networkx>=3.7`, and `matplotlib>=3.10`
 
 ### Requirement: Typed distribution
 
