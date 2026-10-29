@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - A VS Code Dev Container based on the latest Google Colab CPU runtime, with Python/Jupyter
-  extensions, a notebook-ready Hatch environment, OpenCode, and Docker-in-Docker for the Colab gate.
+  extensions, a notebook-ready Hatch environment, and OpenCode.
 - Non-symmetrizable `QuasiCartanMatrix` construction now raises `NotSymmetrizableError` carrying a
   verifiable `SymmetrizerCertificate` for zero entries, opposite signs, or inconsistent cycles.
 - NumPy 2.1 or newer is now a declared runtime dependency, used for the classifier's bounded
@@ -26,9 +26,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   classifier with exact inertia, normal forms, witnesses, and a documented G2 extension.
 - Colab/Jupyter Markdown and HTML rendering for matrices, forms, inertia, mixed bigraphs, and Dynkin
   results, with notebook-wide `dynkinlab.display.options` and per-call `DisplayOptions` overrides.
-- A pinned Colab compatibility smoke gate for the official CPU runtime image.
+- Colab compatibility assertions that run against the dev container's Python.
 - Sphinx documentation, a versioned pre-push hook, and a CI workflow for checks, tests, packaging,
-  documentation, and Colab compatibility.
+  and documentation.
 
 ### Changed
 
@@ -36,3 +36,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   flation steps, and an empty witness. Non-negative components keep the bounded flation behavior.
 - `SymmetrizedMatrix` was removed from `dynkinlab.matrix`; `MatrixLike` remains the read-only
   protocol used by `QuadraticForm` and `Inertia`.
+- Developer verification now runs through Hatch (`hatch run verify` and `hatch run colab:smoke`); the
+  `scripts/` directory was removed. Colab compatibility is checked inside the dev container, so no
+  separate image is downloaded.
+- Type checking now runs Pyrefly in strict mode across `src`, `tests`, and `tools`, treats warnings as
+  failures, and uses NetworkX type stubs.

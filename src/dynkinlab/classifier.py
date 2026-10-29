@@ -7,6 +7,7 @@ from collections.abc import Hashable, Iterable
 from dataclasses import dataclass
 
 import numpy as np
+import numpy.typing as npt
 
 from dynkinlab.bigraph import Bigraph
 from dynkinlab.dynkin import (
@@ -36,7 +37,7 @@ class _ComponentOutcome:
 class _SymmetricState:
     """Mutable symmetric state with an O(n) dotted-edge index."""
 
-    def __init__(self, entries: np.ndarray) -> None:
+    def __init__(self, entries: npt.NDArray[np.int64]) -> None:
         self.entries = np.array(entries, dtype=np.int64, copy=True)
         self.size = self.entries.shape[0]
         self.dotted: set[tuple[int, int]] = set()
@@ -45,9 +46,7 @@ class _SymmetricState:
     def _rebuild_dotted(self) -> None:
         """Rebuild the dotted-edge set from the current entries."""
         mask = (self.entries > 0) & (self.entries.T > 0)
-        self.dotted = {
-            (int(row), int(column)) for row, column in np.argwhere(np.triu(mask, k=1)).tolist()
-        }
+        self.dotted = {(row, column) for row, column in np.argwhere(np.triu(mask, k=1)).tolist()}
 
     def next_dotted(self) -> tuple[int, int] | None:
         """Return one dotted edge, or None when the matrix is solid."""
@@ -287,7 +286,7 @@ class DynkinClassifier:
         return True, ""
 
     @classmethod
-    def _distinguished(cls, entries: np.ndarray) -> int | None:
+    def _distinguished(cls, entries: npt.NDArray[np.int64]) -> int | None:
         """Return a source/sink that carries every arrow, if one exists."""
         arrows = cls._arrows(entries)
         if not arrows:
@@ -310,7 +309,7 @@ class DynkinClassifier:
     @classmethod
     def _arrows(
         cls,
-        entries: np.ndarray,
+        entries: npt.NDArray[np.int64],
     ) -> list[tuple[int, int, int, bool]]:
         """Return arrows as (source, target, multiplicity, dotted)."""
         size = entries.shape[0]
@@ -341,9 +340,9 @@ class DynkinClassifier:
     @classmethod
     def _make_solid_arched(
         cls,
-        entries: np.ndarray,
+        entries: npt.NDArray[np.int64],
         distinguished: int,
-    ) -> tuple[np.ndarray, tuple[FlationStep, ...]]:
+    ) -> tuple[npt.NDArray[np.int64], tuple[FlationStep, ...]]:
         """Flip dotted arrows incident on the distinguished vertex."""
         current = np.array(entries, dtype=np.int64, copy=True)
         steps: list[FlationStep] = []
@@ -365,9 +364,9 @@ class DynkinClassifier:
     @classmethod
     def _run_symmetric(
         cls,
-        entries: np.ndarray,
+        entries: npt.NDArray[np.int64],
         bound: int,
-    ) -> tuple[np.ndarray, tuple[FlationStep, ...], bool]:
+    ) -> tuple[npt.NDArray[np.int64], tuple[FlationStep, ...], bool]:
         """Run bounded inflations on a symmetric component."""
         state = _SymmetricState(entries)
         steps: list[FlationStep] = []
@@ -384,10 +383,10 @@ class DynkinClassifier:
     @classmethod
     def _run_distinguished(
         cls,
-        entries: np.ndarray,
+        entries: npt.NDArray[np.int64],
         distinguished: int,
         bound: int,
-    ) -> tuple[np.ndarray, tuple[FlationStep, ...], str | None]:
+    ) -> tuple[npt.NDArray[np.int64], tuple[FlationStep, ...], str | None]:
         """Run non-symmetric Stage 2 while preserving solid-arched.
 
         Dotted edges are selected in ``G - x``. For each edge, both flation
@@ -409,7 +408,7 @@ class DynkinClassifier:
             if len(steps) >= bound:
                 return current, tuple(steps), "bound exhausted"
 
-            chosen: tuple[int, int, np.ndarray] | None = None
+            chosen: tuple[int, int, npt.NDArray[np.int64]] | None = None
             for row, column in dotted:
                 for source, target in ((row, column), (column, row)):
                     candidate = QuasiCartanMatrix.flate_entries(
@@ -430,16 +429,16 @@ class DynkinClassifier:
             steps.append(FlationStep(source, target))
 
     @classmethod
-    def _solid_arched(cls, entries: np.ndarray) -> bool:
+    def _solid_arched(cls, entries: npt.NDArray[np.int64]) -> bool:
         """Return whether every arrow is solid."""
         return all(not dotted for _, _, _, dotted in cls._arrows(entries))
 
     @classmethod
     def _run_naive(
         cls,
-        entries: np.ndarray,
+        entries: npt.NDArray[np.int64],
         bound: int,
-    ) -> tuple[np.ndarray, tuple[FlationStep, ...], bool]:
+    ) -> tuple[npt.NDArray[np.int64], tuple[FlationStep, ...], bool]:
         """Run the non-symmetric n <= 4 bounded inflation loop."""
         current = np.array(entries, dtype=np.int64, copy=True)
         steps: list[FlationStep] = []
@@ -454,17 +453,17 @@ class DynkinClassifier:
             steps.append(FlationStep(source, target))
 
     @staticmethod
-    def _first_positive(entries: np.ndarray) -> tuple[int, int] | None:
+    def _first_positive(entries: npt.NDArray[np.int64]) -> tuple[int, int] | None:
         """Return the first positive off-diagonal pair."""
         for row, column in np.argwhere(entries > 0).tolist():
             if row != column:
-                return int(row), int(column)
+                return row, column
         return None
 
     @classmethod
     def _stage_three(
         cls,
-        entries: np.ndarray,
+        entries: npt.NDArray[np.int64],
         steps: tuple[FlationStep, ...],
         bound: int,
     ) -> _ComponentOutcome:

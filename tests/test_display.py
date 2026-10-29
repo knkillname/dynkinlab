@@ -45,8 +45,8 @@ class TestDisplayOptions:
         assert display_options.matrix_index_base == 1
         assert display_options.bigraph_layout_seed == 7
         assert display_options.bigraph_figure_size == (5.0, 3.0)
-        assert display_options.bigraph_show_labels is False
-        assert display_options.bigraph_show_multiplicity is False
+        assert not display_options.bigraph_show_labels
+        assert not display_options.bigraph_show_multiplicity
         assert display_options.bigraph_arrow_style == "line"
 
     @pytest.mark.parametrize("field", ["expanded_form_dimension_limit", "matrix_index_base"])

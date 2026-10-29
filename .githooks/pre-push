@@ -18,8 +18,13 @@ fi
 
 cd "$repo_root"
 
+if ! command -v hatch >/dev/null 2>&1; then
+    printf 'pre-push: hatch is required. Install it with: uv tool install hatch\n' >&2
+    exit 1
+fi
+
 printf '\npre-push: running local verification...\n'
-if ! "$repo_root/scripts/verify" --skip-colab; then
+if ! hatch run verify; then
     printf '\npre-push: verification failed; push aborted.\n' >&2
     exit 1
 fi

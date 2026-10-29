@@ -5,8 +5,10 @@
 
 from collections.abc import Iterable
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
+import numpy.typing as npt
 
 import dynkinlab
 from dynkinlab import display
@@ -189,29 +191,29 @@ class QuasiCartanMatrix:
 
     @staticmethod
     def flate_entries(
-        entries: Iterable[Iterable[int]] | np.ndarray,
+        entries: Iterable[Iterable[int]] | npt.NDArray[Any],
         source: int,
         target: int,
-        dtype: type | np.dtype = object,
-    ) -> np.ndarray:
+        dtype: npt.DTypeLike = object,
+    ) -> npt.NDArray[Any]:
         """Apply the paper's flation formula to an entry matrix.
 
         Parameters
         ----------
-        entries : Iterable[Iterable[int]] | numpy.ndarray
+        entries : Iterable[Iterable[int]] | numpy.typing.NDArray
             Square integer matrix rows. The input is copied.
         source : int
             Source vertex index.
         target : int
             Target vertex index. Equal source and target performs a sign
             inversion of every edge incident to the target.
-        dtype : type | numpy.dtype
+        dtype : numpy.typing.DTypeLike
             Output dtype. Use ``object`` for exact arbitrary-precision
             integers and ``numpy.int64`` for the classifier's bounded state.
 
         Returns
         -------
-        numpy.ndarray
+        numpy.typing.NDArray
             The flated entries in the requested dtype.
 
         Raises

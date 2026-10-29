@@ -49,9 +49,24 @@ Source = "https://github.com/knkillname/dynkinlab"
 [tool.hatch.version]
 path = "src/dynkinlab/__init__.py"
 
+[tool.hatch.envs.default.scripts]
+verify = [
+  'cd "$(git rev-parse --show-toplevel)" && hatch check',
+  'cd "$(git rev-parse --show-toplevel)" && hatch test',
+  'cd "$(git rev-parse --show-toplevel)" && hatch run colab:smoke',
+]
+
+[tool.hatch.envs.colab]
+type = "system"
+skip-install = true
+
+[tool.hatch.envs.colab.scripts]
+smoke = "/usr/bin/python3 tools/colab_smoke.py"
+
 [tool.hatch.envs.hatch-check-types]
 extra-dependencies = [
   "hypothesis>=6.0",
+  "types-networkx>=3.6.1",
 ]
 
 [tool.hatch.envs.hatch-test]
@@ -123,7 +138,10 @@ convention = "numpy"
 
 [tool.pyrefly]
 preset = "strict"
-project-includes = ["src/dynkinlab", "tests"]
+min-severity = "warn"
+check-unannotated-defs = true
+infer-return-types = "never"
+project-includes = ["src/dynkinlab", "tests", "tools"]
 search-path = ["src", "."]
 python-version = "3.13"
 disable-search-path-heuristics = true

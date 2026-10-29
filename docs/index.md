@@ -24,8 +24,7 @@ print(f"DynkinLab {dynkinlab.__version__}")
 ```
 
 The package requires Python 3.13 or newer, NumPy 2.1 or newer, NetworkX 3.7 or newer, and
-matplotlib 3.10 or newer. Those floors match the pinned Google Colab CPU runtime used by the
-compatibility gate.
+matplotlib 3.10 or newer. Those floors match the Google Colab CPU runtime used by the dev container.
 
 ```{toctree}
 :hidden:

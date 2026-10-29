@@ -2,63 +2,54 @@
 
 ## Purpose
 
-Defines the pinned Google Colab runtime check that verifies DynkinLab against the environment used by Colab notebooks.
+Defines the Colab runtime compatibility assertions that run inside the dev container.
 
 ## Requirements
 
-### Requirement: Pinned Colab runtime image
+### Requirement: Dev container runtime
 
-The Colab smoke gate MUST use the official `us-docker.pkg.dev/colab-images/public/cpu-runtime` image pinned by digest, not a mutable tag, and MUST run on `linux/amd64`.
+The test environment MUST be the dev container built from the latest official Colab CPU runtime image. Test and verification steps MUST NOT download or start a separate container image.
 
-#### Scenario: Digest is the source of truth
+#### Scenario: Dev container is the only image pull
 
-- **WHEN** the smoke configuration is inspected
-- **THEN** it references the image by a `sha256:` digest
-- **AND** it does not depend on the `latest` tag
-
-#### Scenario: CPU image is sufficient
-
-- **WHEN** the smoke gate runs
-- **THEN** it uses the CPU runtime image and does not require a GPU
+- **WHEN** the dev container is created
+- **THEN** it uses the official Colab CPU runtime image
+- **AND** no test or verification step pulls or starts another image
 
 ### Requirement: Colab environment assertions
 
-The smoke gate MUST assert that the interpreter is Python 3.13 and that NumPy, NetworkX, and matplotlib import at or above the declared floors.
+The verification suite MUST assert that the interpreter is Python 3.13 and that NumPy, NetworkX, and matplotlib import at or above the declared floors.
 
 #### Scenario: Interpreter matches the target runtime
 
-- **WHEN** the smoke gate starts the container
+- **WHEN** the verification suite runs
 - **THEN** `sys.version_info[:2]` equals `(3, 13)`
 
 #### Scenario: Visualization dependencies meet the floors
 
-- **WHEN** the smoke gate imports the visualization dependencies
+- **WHEN** the verification suite imports the visualization dependencies
 - **THEN** NetworkX is at least 3.7 and matplotlib is at least 3.10
 
 #### Scenario: NumPy meets the floor
 
-- **WHEN** the smoke gate imports the numerical dependency
+- **WHEN** the verification suite imports the numerical dependency
 - **THEN** NumPy is at least 2.1
 
 ### Requirement: Package import smoke
 
-The smoke gate MUST import `dynkinlab` from the mounted source or an installed wheel and MUST fail when the import or packaged version lookup fails.
+The verification suite MUST import `dynkinlab` from the source tree and MUST fail when the import or packaged version lookup fails.
 
 #### Scenario: Source tree imports in the Colab interpreter
 
-- **WHEN** the smoke gate runs with `PYTHONPATH` pointing at `src`
+- **WHEN** `hatch run colab:smoke` runs with `PYTHONPATH` pointing at `src`
 - **THEN** `import dynkinlab` succeeds and `dynkinlab.__version__` is a non-empty string
 
-### Requirement: Selective execution and CI coverage
+### Requirement: Verification entry point
 
-The verification entry point MUST support skipping the Colab gate for fast local runs, while CI MUST run the gate in a dedicated job.
+`hatch run verify` MUST run the host checks, the test suite, and the Colab environment assertions, and MUST be run inside the dev container.
 
-#### Scenario: Local verification can skip Colab
+#### Scenario: Full verification runs inside the dev container
 
-- **WHEN** `scripts/verify --skip-colab` runs
-- **THEN** the host quality gates run and the Colab gate is reported as skipped
-
-#### Scenario: CI runs the Colab gate
-
-- **WHEN** CI executes the Colab compatibility job
-- **THEN** it runs the pinned smoke gate without the skip option
+- **WHEN** `hatch run verify` runs inside the dev container
+- **THEN** the host checks, tests, and Colab assertions run
+- **AND** no additional image is downloaded

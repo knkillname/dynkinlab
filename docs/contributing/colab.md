@@ -3,65 +3,48 @@
 :::{admonition} tl;dr
 :class: tldr
 
-The Colab gate runs the official CPU runtime image pinned by digest. Use `scripts/colab-smoke` for
-the gate alone or `scripts/verify --skip-colab` for the fast host checks.
+Develop inside the dev container. It is built from the latest official Colab CPU runtime, and
+`hatch run verify` checks compatibility against that container's Python without downloading another
+image.
 :::
 
-## Pinned image
+## Runtime image
 
-The single source of truth is `scripts/colab-image`. It contains:
+The source of truth is `.devcontainer/Dockerfile`, which builds from the official Colab CPU runtime
+on the `latest` tag. Rebuilding the dev container picks up the current Colab runtime. No other step
+pulls an image.
 
-```text
-us-docker.pkg.dev/colab-images/public/cpu-runtime@sha256:17929077afbae4b805c774450b50ed6945daa122107ac0fb492ce057bc0c3539
-```
+## What is checked
 
-The image is the official Colab CPU runtime from release
-`release-colab-external-images_20261027-060057_RC00`. It runs Python 3.13.18 and ships NetworkX 3.7
-and matplotlib 3.10.0. The smoke script mounts the repository read-only and imports `dynkinlab`
-from `src` with `PYTHONPATH`, so nothing is installed into the image's system Python.
-
-Update the digest deliberately when Colab changes. Do not replace it with `latest`: the smoke result
-must stay reproducible.
-
-## Run the smoke gate
-
-```console
-scripts/colab-smoke
-```
-
-The script asserts:
+`hatch run colab:smoke` uses the container's system Python through Hatch's `system` environment and
+asserts:
 
 1. `sys.version_info[:2] == (3, 13)`.
-2. NetworkX is at least 3.7 and matplotlib is at least 3.10.
+2. NumPy is at least 2.1, NetworkX is at least 3.7, and matplotlib is at least 3.10.
 3. `import dynkinlab` succeeds and `dynkinlab.__version__` is a non-empty string.
 
-It prints the interpreter and dependency versions before exiting.
+The command does not create a virtual environment or install dependencies; it runs against the
+Colab runtime already present in the container.
 
-## Skip Colab for local checks
+## Run the checks
 
-```console
-scripts/verify --skip-colab
-```
-
-This runs `hatch check` and `hatch test`, then reports the Colab gate as skipped. The pre-push hook
-uses this fast path so a normal push does not pull or start the 28.3 GB runtime image.
-
-Run the full sequence when changing the package boundary, the dependency floors, or the Colab gate:
+Inside the dev container:
 
 ```console
-scripts/verify
+hatch run verify
 ```
 
-## CI split
+This runs `hatch check`, `hatch test`, and the Colab compatibility assertions. The pre-push hook uses
+the same command.
 
-CI has a dedicated `colab` job that reads `scripts/colab-image`, verifies the reference ends in a
-`sha256:` digest and does not use `latest`, then runs `scripts/colab-smoke`. The other jobs stay
-small and fast:
+Run only the compatibility assertions with:
 
-- `check` runs `hatch check`.
-- `test` runs `hatch test` on Python 3.13.
-- `package` builds the wheel, installs it in a clean environment, and verifies `py.typed` and the
-  license file.
-- `docs` builds the Sphinx site with warnings treated as errors.
+```console
+hatch run colab:smoke
+```
 
-Keeping the Colab gate separate avoids downloading the image for every unit-test run.
+## CI
+
+CI runs `hatch check`, `hatch test`, wheel packaging, and the Sphinx build on standard runners. It
+does not download the Colab image or run a separate Colab job. Colab compatibility is verified by
+running the test and verification commands inside the dev container.

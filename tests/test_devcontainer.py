@@ -22,7 +22,15 @@ def test_devcontainer_configuration_parses() -> None:
     config = json.loads(text)
 
     assert config["remoteUser"] == "ubuntu"
-    assert "ghcr.io/devcontainers/features/docker-in-docker:4" in config["features"]
+    assert "features" not in config
+
+
+def test_colab_check_uses_the_container_python() -> None:
+    text = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    environment = tomllib.loads(text)["tool"]["hatch"]["envs"]["colab"]
+
+    assert environment["type"] == "system"
+    assert environment["skip-install"] is True
 
 
 def test_devcontainer_installs_python_and_jupyter_extensions() -> None:

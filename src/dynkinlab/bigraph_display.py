@@ -74,8 +74,10 @@ class BigraphRenderer:
                 )
 
         for edge in bigraph.edges:
-            start = positions[edge.source]
-            end = positions[edge.target]
+            source_position = positions[edge.source]
+            target_position = positions[edge.target]
+            start = (float(source_position[0]), float(source_position[1]))
+            end = (float(target_position[0]), float(target_position[1]))
             linestyle = ":" if edge.style is EdgeStyle.DOTTED else "-"
             if edge.directed:
                 arrowstyle = "-|>" if options.bigraph_arrow_style == "arrow" else "-"

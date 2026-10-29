@@ -2,8 +2,8 @@
 #
 # SPDX-License-Identifier: MIT
 #
-# Track the latest Colab CPU runtime so the dev container stays current. The
-# separate Colab smoke gate remains pinned by digest for reproducibility.
+# Track the latest Colab CPU runtime. Tests run inside this container, so they
+# exercise the same runtime as Colab notebooks.
 FROM us-docker.pkg.dev/colab-images/public/cpu-runtime:latest
 
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -16,7 +16,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
     UV_TOOL_BIN_DIR=/usr/local/bin
 
 # Colab starts Jupyter through /datalab/run.sh. A dev container needs a
-# long-lived shell instead; Docker-in-Docker adds its own entrypoint later.
+# long-lived shell instead.
 ENTRYPOINT []
 CMD ["sleep", "infinity"]
 

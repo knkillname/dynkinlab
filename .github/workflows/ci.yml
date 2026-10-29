@@ -136,29 +136,6 @@ jobs:
           assert any(name.endswith("LICENSE") for name in names), sorted(names)
           PY
 
-  colab:
-    name: Colab compatibility
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out
-        uses: actions/checkout@v4
-
-      - name: Read pinned Colab image
-        run: echo "COLAB_IMAGE=$(cat scripts/colab-image)" >> "$GITHUB_ENV"
-
-      - name: Verify the image reference is pinned
-        run: |
-          image=$(cat scripts/colab-image)
-          printf '%s\n' "$image" | grep -Eq '@sha256:[0-9a-f]{64}$'
-          if printf '%s\n' "$image" | grep -q 'latest'; then
-            echo "The Colab image must not use the latest tag." >&2
-            exit 1
-          fi
-          echo "Pinned Colab image: $image"
-
-      - name: Run the Colab smoke gate
-        run: scripts/colab-smoke
-
   docs:
     name: Docs
     runs-on: ubuntu-latest

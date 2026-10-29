@@ -204,6 +204,8 @@ cython_debug/
 # .vscode/
 # Temporary file for partial code execution
 tempCodeRunnerFile.py
+# devcontainer lock
+.devcontainer/devcontainer-lock.json
 
 # Ruff stuff:
 .ruff_cache/

@@ -2,16 +2,9 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "verify: full",
+      "label": "verify",
       "type": "shell",
-      "command": "scripts/verify",
-      "group": "test",
-      "problemMatcher": []
-    },
-    {
-      "label": "verify: skip Colab",
-      "type": "shell",
-      "command": "scripts/verify --skip-colab",
+      "command": "hatch run verify",
       "group": "test",
       "problemMatcher": []
     },
@@ -49,12 +42,6 @@
       "type": "shell",
       "command": "hatch run docs:serve",
       "isBackground": true,
-      "problemMatcher": []
-    },
-    {
-      "label": "colab: smoke",
-      "type": "shell",
-      "command": "scripts/colab-smoke",
       "problemMatcher": []
     }
   ]

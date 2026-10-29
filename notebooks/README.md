@@ -15,8 +15,8 @@ tables or Markdown in Colab; a full quickstart notebook will follow.
 3. Import the package and keep any generated files under `/content`. The Colab filesystem is
    ephemeral; mount Google Drive when a file must outlive the runtime.
 
-The compatibility gate in `scripts/colab-smoke` runs against the same pinned CPU image that Colab
-uses, so the dependency floors and interpreter version are checked before a release.
+The compatibility assertions run inside the dev container against the same latest CPU image that
+Colab uses, so the dependency floors and interpreter version are checked before a release.
 
 ## Rich display
 

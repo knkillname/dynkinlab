@@ -16,10 +16,15 @@ hatch env create
 hatch env create docs
 hatch env create hatch-test.py3.13
 
+# Hatch's system environment stores a marker here; create the directory so the
+# Colab runtime check can use the container's Python without installing anything.
+mkdir -p "$HOME/.local/share/hatch/env/system"
+hatch env create colab
+
 # VS Code points at this stable path instead of a Hatch hash directory.
 interpreter_dir="$HOME/.local/share/dynkinlab"
 mkdir -p "$interpreter_dir"
 ln -sfn "$(hatch env find hatch-test.py3.13)" "$interpreter_dir/test-venv"
 
 printf '\nOpenCode: %s\n' "$(opencode --version)"
-printf 'Dev container ready. Run scripts/verify or scripts/verify --skip-colab.\n'
+printf 'Dev container ready. Run hatch run verify.\n'

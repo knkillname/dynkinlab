@@ -125,30 +125,30 @@ hatch check --fix
 hatch test
 ```
 
-The pre-push hook and the full host verification run:
+`hatch check` runs Ruff and Pyrefly in strict mode, with warnings treated as errors.
+
+The pre-push hook and the full verification run inside the dev container:
 
 ```console
-scripts/verify --skip-colab
+hatch run verify
 ```
 
-The Colab compatibility gate is separate because the pinned runtime image is large:
-
-```console
-scripts/verify
-```
+This runs `hatch check`, `hatch test`, and the Colab compatibility assertions against the container's
+Python. No separate image is downloaded. Run only the compatibility assertions with
+`hatch run colab:smoke`.
 
 ### Dev container
 
 The repository includes a VS Code Dev Container based on the latest Google Colab CPU runtime, with
-Hatch, OpenCode, pre-created test and docs environments, and Docker-in-Docker for the Colab gate.
+Hatch, OpenCode, and pre-created test and docs environments.
 Install the **Dev Containers** extension, open the repository, and run
 **Dev Containers: Reopen in Container**.
 
-The container has tasks for the usual workflows: **Tasks: Run Task** → `verify: full`,
-`verify: skip Colab`, `hatch: test`, or `docs: serve`. Run `opencode` in the integrated terminal to
-work inside the container with the agent. The selected Hatch environment includes `ipykernel`, so
-VS Code notebooks run without installing a separate kernel. The first full verification downloads
-the separate pinned Colab image used by the compatibility gate into the container's Docker daemon.
+The container has tasks for the usual workflows: **Tasks: Run Task** → `verify`, `hatch: test`, or
+`docs: serve`. Run `opencode` in the integrated terminal to work inside the container with the agent.
+The selected Hatch environment includes `ipykernel`, so VS Code notebooks run without installing a
+separate kernel. All checks run inside the container; only creating the dev container pulls the Colab
+image.
 
 ## Documentation
 
