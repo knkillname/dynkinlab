@@ -8,6 +8,8 @@ from collections.abc import Hashable, Iterable
 from dataclasses import dataclass
 from enum import StrEnum
 
+import networkx as nx
+
 import dynkinlab
 from dynkinlab import display
 from dynkinlab.display import DisplayOptions
@@ -175,6 +177,93 @@ class Bigraph:
                     ),
                 )
         return tuple(edges)
+
+    def to_networkx(self) -> "nx.Graph[Hashable]":
+        """Return an undirected NetworkX view of the bigraph.
+
+        Every vertex label becomes a node, including labels with no incident
+        edges. Each derived edge or arrow becomes one undirected graph edge
+        carrying the following attributes:
+
+        - ``style``: ``"solid"`` or ``"dotted"``
+        - ``directed``: whether the original edge is an arrow
+        - ``multiplicity``: positive number of parallel edges
+        - ``weight``: signed multiplicity
+
+        Returns
+        -------
+        networkx.Graph
+            Graph whose nodes are the bigraph labels and whose edges preserve
+            the derived bigraph structure.
+        """
+        graph = nx.Graph()
+        graph.add_nodes_from(self.labels)
+        for edge in self.edges:
+            graph.add_edge(
+                edge.source,
+                edge.target,
+                style=edge.style.value,
+                directed=edge.directed,
+                multiplicity=edge.multiplicity,
+                weight=edge.weight,
+            )
+        return graph
+
+    def block_cut_forest(self) -> "dynkinlab.structure.BlockCutForest":
+        """Return the block-cut forest of the underlying graph.
+
+        Returns
+        -------
+        BlockCutForest
+            One block-cut tree per connected component, with blocks and
+            articulation points in bigraph-index order.
+        """
+        from dynkinlab.structure import build_block_cut_forest
+
+        return build_block_cut_forest(self)
+
+    def is_a_block(
+        self,
+        labels: Iterable[Hashable],
+    ) -> "dynkinlab.structure.ABlockPartition | None":
+        """Return an A-block partition for an induced vertex set.
+
+        Parameters
+        ----------
+        labels : Iterable[Hashable]
+            Candidate block labels.
+
+        Returns
+        -------
+        ABlockPartition | None
+            A verified partition when the induced set is an A-block, otherwise
+            ``None``.
+
+        Raises
+        ------
+        ValueError
+            If the labels are empty, duplicated, or unknown.
+        """
+        from dynkinlab.structure import a_block_partition
+
+        return a_block_partition(self, labels)
+
+    def a_type_certificate(self) -> "dynkinlab.structure.ATypeCertificate | None":
+        """Return an A-type certificate when every component is A-type.
+
+        Returns
+        -------
+        ATypeCertificate | None
+            A verifiable certificate, or ``None`` when at least one component
+            fails the A-type structural conditions.
+        """
+        from dynkinlab.structure import build_a_type_certificate
+
+        return build_a_type_certificate(self)
+
+    def is_type_a(self) -> bool:
+        """Return whether every connected component is A-type."""
+        return self.a_type_certificate() is not None
 
     @staticmethod
     def _effective_options(options: DisplayOptions | None) -> DisplayOptions:

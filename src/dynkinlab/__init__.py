@@ -15,6 +15,14 @@ from dynkinlab.flation import FlationSequence, FlationStep
 from dynkinlab.inertia import Inertia
 from dynkinlab.quadratic_form import QuadraticForm
 from dynkinlab.quasi_cartan import QuasiCartanMatrix
+from dynkinlab.structure import (
+    ABlockPartition,
+    ATypeCertificate,
+    ATypeComponentCertificate,
+    Block,
+    BlockCutForest,
+    BlockCutTree,
+)
 from dynkinlab.symmetrizer import (
     NotSymmetrizableError,
     SymmetrizerCertificate,
@@ -24,8 +32,14 @@ from dynkinlab.symmetrizer import (
 __version__ = "0.0.1"
 
 __all__ = [
+    "ABlockPartition",
+    "ATypeCertificate",
+    "ATypeComponentCertificate",
     "Bigraph",
     "BigraphEdge",
+    "Block",
+    "BlockCutForest",
+    "BlockCutTree",
     "ClassificationStatus",
     "ComponentClassification",
     "DynkinClassification",

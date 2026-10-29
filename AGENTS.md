@@ -40,6 +40,8 @@ Hatch drives every quality gate; install it once with `uv tool install hatch`.
   search uses `np.int64`; the public flation path keeps Python integers for arbitrary precision.
 - Do not import or access underscore-prefixed names across modules. The only exception is the
   `_repr_*` notebook hooks. `tests/test_package.py` enforces the import rule.
+- Never use `if TYPE_CHECKING:` imports or equivalent type-checking-only import blocks. Use lazy
+  imports at the call site and fully qualified string annotations for cross-module types.
 - No `from __future__` imports; Python 3.13 is the floor. NumPy-style docstrings and 100-character
   lines are enforced. Ruff ignores `ANN` in tests, but Pyrefly still type-checks `src`, `tests`, and
   `tools`, including unannotated definitions.

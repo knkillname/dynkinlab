@@ -20,7 +20,7 @@ The system SHALL represent the finite Cartan-Killing types `A_n` (n >= 1), `B_n`
 - **WHEN** a caller requests `A_0`, `B_1`, `C_2`, `D_3`, `E_5`, `F_3`, or `G_3`
 - **THEN** construction fails with `ValueError`
 
-### Requirement: Cubic classification of connected positive definite matrices
+### Requirement: Exact classification of connected positive definite matrices
 
 The system SHALL classify any connected admissible positive definite quasi-Cartan matrix, including non-symmetric ones, and return its exact finite Dynkin type in O(n^3) integer operations. It SHALL use exact arithmetic and SHALL NOT rely on floating-point eigenvalues.
 
@@ -44,14 +44,14 @@ The system SHALL classify any connected admissible positive definite quasi-Carta
 - **WHEN** a symmetric matrix and a non-symmetric symmetrizable matrix are classified
 - **THEN** both are accepted as `QuasiCartanMatrix` values and use the same classifier
 
-#### Scenario: Reported steps respect the paper's bound
+#### Scenario: Reported steps respect the symmetric inflation bound
 
 - **WHEN** the canonical `E_8` matrix is classified
-- **THEN** the result reports a step count that does not exceed the paper's symmetric bound for dimension 8
+- **THEN** the result reports a step count that does not exceed the symmetric inflation bound for dimension 8
 
 ### Requirement: G2 exception
 
-The system SHALL recognize the 2-by-2 `G_2` Cartan matrix and classify it as `G_2` even though its entries have magnitude 3 and fall outside the paper's admissible class.
+The system SHALL recognize the 2-by-2 `G_2` Cartan matrix and classify it as `G_2` even though its entries have magnitude 3 and fall outside the admissibility limits.
 
 #### Scenario: Standard G2 orientation is classified
 
@@ -65,7 +65,7 @@ The system SHALL recognize the 2-by-2 `G_2` Cartan matrix and classify it as `G_
 
 ### Requirement: Admissibility and non-finite outcomes
 
-The system SHALL return `NOT_ADMISSIBLE` for matrices that fail the paper's admissibility conditions, except `G_2`, and `NOT_POSITIVE_DEFINITE` when the paper's bound is exhausted without a Dynkin normal form. It SHALL never loop indefinitely and SHALL report a reason.
+The system SHALL return `NOT_ADMISSIBLE` for matrices that fail the admissibility conditions, except `G_2`, and `NOT_POSITIVE_DEFINITE` when the inflation bound is exhausted without a Dynkin normal form. It SHALL never loop indefinitely and SHALL report a reason.
 
 #### Scenario: Entry magnitude above the admissible limit is rejected
 
@@ -79,7 +79,7 @@ The system SHALL return `NOT_ADMISSIBLE` for matrices that fail the paper's admi
 
 #### Scenario: Non-positive-definite admissible input stops at the bound
 
-- **WHEN** the paper's endless-loop example or the affine `A_2^(1)` matrix is classified
+- **WHEN** a degenerate admissible matrix that exhausts the inflation bound or the affine `A_2^(1)` matrix is classified
 - **THEN** the result status is `NOT_POSITIVE_DEFINITE` and the call terminates
 
 ### Requirement: Rich classification result

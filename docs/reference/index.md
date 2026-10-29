@@ -220,6 +220,73 @@ print(bigraph.to_markdown())
 print(bigraph.to_html())
 ```
 
+## Structural bigraphs
+
+`Bigraph.to_networkx()` returns an undirected `networkx.Graph` with every label as a node and each
+derived edge carrying `style`, `directed`, `multiplicity`, and `weight`. This is the underlying graph
+used by the structural operations and is useful for custom figures.
+
+```python
+from dynkinlab import Bigraph, QuasiCartanMatrix
+
+bigraph = Bigraph(QuasiCartanMatrix(((2, -1), (-1, 2))), ("a", "b"))
+graph = bigraph.to_networkx()
+assert graph.edges["a", "b"]["style"] == "solid"
+```
+
+`Bigraph.block_cut_forest()` returns a `BlockCutForest` with one `BlockCutTree` per connected
+component. Each tree exposes `labels`, `blocks`, and `articulation_points`; every `Block` carries its
+labels and induced bigraph. `BlockCutTree.to_networkx()` returns a bipartite graph with block nodes
+marked `kind="block"` and vertex nodes marked `kind="vertex"`.
+
+```python
+forest = bigraph.block_cut_forest()
+tree = forest.trees[0]
+assert tree.verify(bigraph)
+print(tree.articulation_points)
+```
+
+`Bigraph.is_a_block(labels)` returns an `ABlockPartition` when the induced vertex set is an A-block,
+and `None` otherwise. The two sides X and Y are disjoint: every cross pair is solid and every pair
+within a side is dotted. A block with no solid edges is accepted with X equal to all labels and Y
+empty.
+
+```python
+partition = bigraph.is_a_block(("a", "b"))
+assert partition is not None and partition.verify(bigraph, ("a", "b"))
+print(partition.x, partition.y)
+```
+
+`Bigraph.a_type_certificate()` returns an `ATypeCertificate` when every connected component is
+A-type, and `None` otherwise. The certificate contains one `ATypeComponentCertificate` per
+component, with the component's `A_n` type, block-cut tree, and A-block partitions. For the 9-vertex
+A-block tree, the certificate has one `A_9` component and four block partitions:
+
+```python
+from dynkinlab import Bigraph, QuasiCartanMatrix
+
+a9_edges = {
+    (1, 2): -1, (1, 3): -1, (2, 3): 1,
+    (3, 4): 1, (3, 5): -1, (3, 9): -1,
+    (4, 5): -1, (4, 7): -1, (4, 9): -1,
+    (5, 6): 1, (5, 8): 1, (5, 9): 1, (6, 8): 1,
+}
+rows = [[2 if row == column else 0 for column in range(9)] for row in range(9)]
+for (source, target), weight in a9_edges.items():
+    rows[source - 1][target - 1] = weight
+    rows[target - 1][source - 1] = weight
+a9 = Bigraph(QuasiCartanMatrix(rows), tuple(range(1, 10)))
+
+certificate = a9.a_type_certificate()
+assert certificate is not None and certificate.verify(a9)
+print([component.dynkin_type.name for component in certificate.components])
+print([block.labels for block in a9.block_cut_forest().trees[0].blocks])
+```
+
+`Bigraph.is_type_a()` is the boolean convenience. The certificate is structural: it does not change
+`Bigraph.classify()`, so the 13-vertex D-core example still classifies as `D_13` while its A-type
+certificate is absent.
+
 ## Dynkin types
 
 `DynkinType(family, rank)` represents a finite Cartan-Killing type. The supported families and
@@ -309,4 +376,4 @@ print(result.to_markdown())
 
 ## Planned surface
 
-Later changes add the structural A/D decompositions and affine classification.
+Later changes add the structural D-type decomposition and affine classification.

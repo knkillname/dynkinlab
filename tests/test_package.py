@@ -27,8 +27,14 @@ class TestPackage:
 
     def test_public_surface(self) -> None:
         assert dynkinlab.__all__ == [
+            "ABlockPartition",
+            "ATypeCertificate",
+            "ATypeComponentCertificate",
             "Bigraph",
             "BigraphEdge",
+            "Block",
+            "BlockCutForest",
+            "BlockCutTree",
             "ClassificationStatus",
             "ComponentClassification",
             "DynkinClassification",
@@ -45,8 +51,14 @@ class TestPackage:
             "__version__",
         ]
         assert set(dynkinlab.__all__) == {
+            "ABlockPartition",
+            "ATypeCertificate",
+            "ATypeComponentCertificate",
             "Bigraph",
             "BigraphEdge",
+            "Block",
+            "BlockCutForest",
+            "BlockCutTree",
             "ClassificationStatus",
             "ComponentClassification",
             "DynkinClassification",
@@ -62,6 +74,8 @@ class TestPackage:
             "SymmetrizerObstruction",
             "__version__",
         }
+        for name in dynkinlab.__all__:
+            assert hasattr(dynkinlab, name)
 
     def test_quasi_cartan_matrix_is_importable(self) -> None:
         assert QuasiCartanMatrix(((2,),)).dimension == 1
