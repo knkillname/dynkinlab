@@ -46,7 +46,7 @@ Issues = "https://github.com/knkillname/dynkinlab/issues"
 Source = "https://github.com/knkillname/dynkinlab"
 
 [tool.hatch.version]
-path = "src/dynkinlab/__about__.py"
+path = "src/dynkinlab/__init__.py"
 
 [tool.hatch.envs.hatch-check-types]
 extra-dependencies = [
@@ -126,9 +126,6 @@ addopts = "--cov=dynkinlab --cov-report=term-missing"
 [tool.coverage.run]
 source = ["dynkinlab"]
 branch = true
-omit = [
-  "src/dynkinlab/__about__.py",
-]
 
 [tool.coverage.report]
 show_missing = true

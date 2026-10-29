@@ -9,6 +9,10 @@ schema: spec-driven
 #     Designs and tasks must cover Windows, macOS, and Linux
 #     Write all artifacts in Spanish
 
+context: |
+  Never import or access underscore-prefixed private names, except the _repr_*
+  hooks required by Colab/Jupyter. Mandatory Python dunder protocols are not private API.
+
 # Per-artifact rules (optional)
 # Add custom rules for specific artifacts.
 # Example:

@@ -3,12 +3,10 @@
 # SPDX-License-Identifier: MIT
 """Exact inertia of symmetric quasi-Cartan matrices."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from fractions import Fraction
 
-from dynkinlab._matrix import MatrixLike
+from dynkinlab.matrix import MatrixLike
 
 
 @dataclass(frozen=True)
@@ -104,7 +102,7 @@ class Inertia:
         return self.to_markdown()
 
     @classmethod
-    def from_matrix(cls, matrix: MatrixLike) -> Inertia:
+    def from_matrix(cls, matrix: MatrixLike) -> "Inertia":
         """Compute inertia exactly by symmetric congruence reduction.
 
         Parameters

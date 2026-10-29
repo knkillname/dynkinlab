@@ -3,7 +3,9 @@
 # SPDX-License-Identifier: MIT
 """Smoke tests for the package skeleton."""
 
+import ast
 import importlib.metadata
+from pathlib import Path
 
 import dynkinlab
 from dynkinlab import Inertia, QuadraticForm, QuasiCartanMatrix
@@ -48,3 +50,34 @@ class TestPackage:
 
     def test_installed_metadata_matches_package_version(self) -> None:
         assert importlib.metadata.version("dynkinlab") == dynkinlab.__version__
+
+
+class TestPublicImports:
+    """Verify that source and tests do not import private names."""
+
+    def test_imports_do_not_reach_private_names(self) -> None:
+        project_root = Path(__file__).resolve().parents[1]
+        paths = [
+            *(project_root / "src" / "dynkinlab").glob("*.py"),
+            *(project_root / "tests").glob("*.py"),
+        ]
+
+        for path in paths:
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    for alias in node.names:
+                        parts = alias.name.split(".")
+                        assert all(not part.startswith("_") for part in parts), (
+                            f"{path}: private module import {alias.name}"
+                        )
+                elif isinstance(node, ast.ImportFrom):
+                    module = node.module or ""
+                    parts = module.split(".")
+                    assert all(not part.startswith("_") for part in parts), (
+                        f"{path}: private module import {module}"
+                    )
+                    for alias in node.names:
+                        assert not alias.name.startswith("_"), (
+                            f"{path}: private name import {alias.name}"
+                        )

@@ -3,14 +3,12 @@
 # SPDX-License-Identifier: MIT
 """Integer quadratic forms associated with quasi-Cartan matrices."""
 
-from __future__ import annotations
-
 from collections.abc import Sequence
 from dataclasses import dataclass
 
 from dynkinlab import display
-from dynkinlab._matrix import MatrixLike
 from dynkinlab.display import DisplayOptions
+from dynkinlab.matrix import MatrixLike
 
 
 @dataclass(frozen=True)
