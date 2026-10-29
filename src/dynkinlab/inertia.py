@@ -71,6 +71,38 @@ class Inertia:
         """Return whether the matrix has a zero eigenvalue."""
         return self.zero > 0
 
+    def to_markdown(self) -> str:
+        """Render the inertia as a Markdown summary.
+
+        Returns
+        -------
+        str
+            Markdown table with counts, rank, signature, and a definiteness label.
+        """
+        if self.is_positive_definite:
+            label = "positive definite"
+        elif self.is_negative_definite:
+            label = "negative definite"
+        elif self.is_degenerate:
+            label = "degenerate"
+        else:
+            label = "indefinite"
+
+        return "\n".join(
+            (
+                "| positive | negative | zero | rank | signature |",
+                "|---:|---:|---:|---:|---:|",
+                f"| {self.positive} | {self.negative} | {self.zero} | "
+                f"{self.rank} | {self.signature} |",
+                "",
+                label,
+            ),
+        )
+
+    def _repr_markdown_(self) -> str:
+        """Return the canonical Markdown representation for notebook display."""
+        return self.to_markdown()
+
     @classmethod
     def from_matrix(cls, matrix: MatrixLike) -> Inertia:
         """Compute inertia exactly by symmetric congruence reduction.

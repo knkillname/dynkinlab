@@ -6,6 +6,8 @@
 from collections.abc import Iterable
 from dataclasses import dataclass
 
+from dynkinlab import display
+from dynkinlab.display import DisplayOptions
 from dynkinlab.inertia import Inertia
 from dynkinlab.quadratic_form import QuadraticForm
 
@@ -103,3 +105,72 @@ class QuasiCartanMatrix:
     def inertia(self) -> Inertia:
         """Return the exact inertia of this matrix."""
         return Inertia.from_matrix(self)
+
+    @staticmethod
+    def _effective_options(options: DisplayOptions | None) -> DisplayOptions:
+        """Return the explicit options or the canonical display options."""
+        return display.options if options is None else options
+
+    def to_markdown(self, options: DisplayOptions | None = None) -> str:
+        """Render the matrix as a Markdown table.
+
+        Parameters
+        ----------
+        options : DisplayOptions | None
+            Per-call display options. The canonical options are used when omitted.
+
+        Returns
+        -------
+        str
+            Markdown table with row and column headers using the configured index base.
+        """
+        settings = self._effective_options(options)
+        indices = tuple(
+            range(
+                settings.matrix_index_base,
+                settings.matrix_index_base + self.dimension,
+            ),
+        )
+        header = "|   | " + " | ".join(str(index) for index in indices) + " |"
+        separator = "|---|" + "|".join("---:" for _ in indices) + "|"
+        rows = [
+            f"| {index} | " + " | ".join(str(value) for value in row) + " |"
+            for index, row in zip(indices, self.entries, strict=True)
+        ]
+        return "\n".join((header, separator, *rows))
+
+    def to_html(self, options: DisplayOptions | None = None) -> str:
+        """Render the matrix as an HTML table.
+
+        Parameters
+        ----------
+        options : DisplayOptions | None
+            Per-call display options. The canonical options are used when omitted.
+
+        Returns
+        -------
+        str
+            HTML table with row and column headers using the configured index base.
+        """
+        settings = self._effective_options(options)
+        indices = tuple(
+            range(
+                settings.matrix_index_base,
+                settings.matrix_index_base + self.dimension,
+            ),
+        )
+        header_cells = "".join(f"<th>{index}</th>" for index in indices)
+        rows = []
+        for index, row in zip(indices, self.entries, strict=True):
+            body_cells = "".join(f"<td>{value}</td>" for value in row)
+            rows.append(f"<tr><th>{index}</th>{body_cells}</tr>")
+        return (
+            '<table class="dynkinlab-matrix">'
+            f"<thead><tr><th></th>{header_cells}</tr></thead>"
+            f"<tbody>{''.join(rows)}</tbody>"
+            "</table>"
+        )
+
+    def _repr_html_(self) -> str:
+        """Return the canonical HTML representation for notebook display."""
+        return self.to_html()

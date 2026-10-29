@@ -55,8 +55,40 @@ The `A_2` Cartan matrix above has inertia `(2, 0, 0)`. The affine `A_2^(1)` matr
 `(2, 0, 1)`, and indefinite forms have both positive and negative counts. Inertia is computed by
 exact rational congruence reduction.
 
-The current mathematical surface covers quasi-Cartan matrices, quadratic forms, and inertia.
-Later changes add the bigraph, flation, and Dynkin classifier layers.
+The current mathematical surface covers quasi-Cartan matrices, quadratic forms, and inertia, plus
+Colab-ready Markdown and HTML representations. Later changes add the bigraph, flation, and Dynkin
+classifier layers.
+
+## Rich display in Colab
+
+`QuasiCartanMatrix` displays as an HTML table in Colab, while `QuadraticForm` and `Inertia` display
+as Markdown. The same strings are available without a notebook:
+
+```python
+from dynkinlab import QuasiCartanMatrix
+from dynkinlab.display import DisplayOptions
+
+matrix = QuasiCartanMatrix(((2, -1), (-1, 2)))
+options = DisplayOptions(matrix_index_base=1)
+
+print(matrix.to_markdown(options=options))
+print(matrix.to_html(options=options))
+print(matrix.quadratic_form.to_markdown(options=options))
+print(matrix.inertia.to_markdown())
+```
+
+Set notebook-wide defaults through the canonical options object:
+
+```python
+import dynkinlab
+
+dynkinlab.display.options.matrix_index_base = 1
+dynkinlab.display.options.expanded_form_dimension_limit = 4
+
+dynkinlab.display.options.reset()
+```
+
+A per-call `DisplayOptions` object overrides the canonical settings for that call only.
 
 ## Notebooks in Colab
 

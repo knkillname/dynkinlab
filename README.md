@@ -7,8 +7,9 @@ DynkinLab is a typed Python library for Dynkin diagrams, quivers, and bigraphs. 
 run in Google Colab as well as in a local Python 3.13+ environment.
 
 This repository currently provides the package foundation plus the first mathematical layer:
-symmetric quasi-Cartan matrices, exact integer quadratic forms, and exact inertia. Bigraphs,
-flation, and Dynkin classification arrive in later changes.
+symmetric quasi-Cartan matrices, exact integer quadratic forms, and exact inertia. The value objects
+render as Markdown or HTML in Colab. Bigraphs, flation, and Dynkin classification arrive in later
+changes.
 
 ## Requirements
 
@@ -35,18 +36,39 @@ installs without extra setup.
 
 ```python
 from dynkinlab import QuasiCartanMatrix
+from dynkinlab.display import DisplayOptions
 
 matrix = QuasiCartanMatrix(((2, -1), (-1, 2)))
 form = matrix.quadratic_form
 inertia = matrix.inertia
+options = DisplayOptions(matrix_index_base=0, expanded_form_dimension_limit=3)
 
 assert matrix.dimension == 2
 assert form.evaluate((1, 1)) == 1
 assert inertia.is_positive_definite
+assert "|   | 0 | 1 |" in matrix.to_markdown(options=options)
+assert "<table" in matrix.to_html(options=options)
+assert "positive definite" in inertia.to_markdown()
 print(f"A_2: dimension={matrix.dimension}, q(1,1)={form.evaluate((1, 1))}, inertia={inertia}")
+print(matrix.to_markdown(options=options))
+print(form.to_markdown(options=options))
 ```
 
 Every Python snippet in this README is executed by the test suite, so the example stays runnable.
+
+## Colab display
+
+Matrices render as HTML tables in Colab, while quadratic forms and inertia render as Markdown.
+`dynkinlab.display.options` holds the notebook-wide defaults:
+
+```text
+dynkinlab.display.options.matrix_index_base
+dynkinlab.display.options.expanded_form_dimension_limit
+dynkinlab.display.options.reset()
+```
+
+Pass a `DisplayOptions` object to a rendering method for a one-call override. The override wins over
+the canonical settings and leaves them unchanged.
 
 ## Development
 
