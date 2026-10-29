@@ -4,7 +4,8 @@
 :class: tldr
 
 DynkinLab exposes the package version and the immutable values used for
-quasi-Cartan matrix work. The mathematical surface grows with each change.
+quasi-Cartan matrix work and structural A/D certificates. The mathematical
+surface grows with each change.
 :::
 
 ## Current surface
@@ -14,6 +15,10 @@ quasi-Cartan matrix work. The mathematical surface grows with each change.
 - `dynkinlab.QuadraticForm` — the exact integer quadratic form of a quasi-Cartan matrix.
 - `dynkinlab.Inertia` — the exact positive, negative, and zero eigenvalue counts.
 - `dynkinlab.Bigraph`, `FlationStep`, `FlationSequence` — labeled mixed bigraphs and witnesses.
+- `dynkinlab.BlockCutForest`, `ATypeCertificate`, `ABlockPartition` — structural A-type inspection
+  and certificates.
+- `dynkinlab.EdgeMultiset`, `DCore`, `DCoreGluingCertificate`, `ACyclizationCertificate` — structural
+  D-type gluing and cyclization certificates.
 - `dynkinlab.DynkinType`, `DynkinClassification` — finite types and classifier results.
 - `dynkinlab.display.options` — the notebook-wide mutable display settings.
 
@@ -220,6 +225,63 @@ print(bigraph.to_markdown())
 print(bigraph.to_html())
 ```
 
+## Edge multisets
+
+`EdgeMultiset(labels, edges)` represents undirected solid and dotted edges before simplification.
+Same-style parallel edges combine into one edge with a larger multiplicity, while opposite-style
+parallel edges remain separate. This is what allows a two-edge D-core to keep a solid and a dotted
+edge between the same pair.
+
+```python
+from dynkinlab import BigraphEdge, EdgeMultiset, EdgeStyle
+
+multiset = EdgeMultiset(
+    ("a", "b"),
+    (
+        BigraphEdge("a", "b", False, EdgeStyle.SOLID, 1),
+        BigraphEdge("a", "b", False, EdgeStyle.DOTTED, 1),
+    ),
+)
+assert len(multiset.edges) == 2
+assert multiset.simplify().edges == ()
+```
+
+`EdgeMultiset.from_bigraph(bigraph)` copies a symmetric bigraph's labels and edges. `+` unions
+labels in first-appearance order and adds edge multiplicities. `identify(source, target)` merges two
+labels and drops the resulting loop. `simplify()` cancels opposite-style pairs and returns a
+`Bigraph`; labels without incident edges remain isolated vertices.
+
+## Bigraph sums and vertex identification
+
+`Bigraph.sum(*pieces, labels=None)` identifies shared labels, adds off-diagonal weights, keeps
+diagonal entries at 2, and simplifies opposite parallel edges. The default label order is first
+appearance; an explicit order must cover exactly the union of the piece labels.
+
+```python
+from dynkinlab import Bigraph, QuasiCartanMatrix
+
+a2 = Bigraph(QuasiCartanMatrix(((2, -1), (-1, 2))), ("a", "b"))
+a3 = Bigraph(QuasiCartanMatrix(((2, -1, 0), (-1, 2, -1), (0, -1, 2))), ("b", "c", "d"))
+summed = Bigraph.sum(a2, a3)
+assert summed.labels == ("a", "b", "c", "d")
+assert len(summed.edges) == 3
+
+cancelled = Bigraph.sum(
+    Bigraph(QuasiCartanMatrix(((2, -1), (-1, 2))), ("a", "b")),
+    Bigraph(QuasiCartanMatrix(((2, 1), (1, 2))), ("a", "b")),
+)
+assert cancelled.edges == ()
+```
+
+`Bigraph.identify(source, target)` merges the target label into the source label, drops any loop
+created by the merge, and simplifies opposite parallel edges. The retained label keeps its original
+position.
+
+```python
+merged = summed.identify("a", "c")
+assert merged.labels == ("a", "b", "d")
+```
+
 ## Structural bigraphs
 
 `Bigraph.to_networkx()` returns an undirected `networkx.Graph` with every label as a node and each
@@ -286,6 +348,84 @@ print([block.labels for block in a9.block_cut_forest().trees[0].blocks])
 `Bigraph.is_type_a()` is the boolean convenience. The certificate is structural: it does not change
 `Bigraph.classify()`, so the 13-vertex D-core example still classifies as `D_13` while its A-type
 certificate is absent.
+
+## D-core cycles
+
+`DCore.cycle(labels, styles)` builds a cyclic D-core from labels in cyclic order and one style per
+position. A core of three or more labels is a simple cycle. A two-label core is the two-edge double
+link with one solid and one dotted edge. `cycle_condition()` reports whether the number of dotted
+core edges is odd; construction rejects even parity, chords, duplicate labels, missing cycle edges,
+and non-simple multiplicities.
+
+```python
+from dynkinlab import DCore, EdgeStyle
+
+core = DCore.cycle(
+    (1, 2, 3, 4, 5),
+    (EdgeStyle.DOTTED, EdgeStyle.SOLID, EdgeStyle.DOTTED, EdgeStyle.DOTTED, EdgeStyle.SOLID),
+)
+assert core.cycle_condition()
+
+double_link = DCore.cycle((1, 2), (EdgeStyle.SOLID, EdgeStyle.DOTTED))
+assert len(double_link.edges.edges) == 2
+```
+
+### D-core gluing
+
+`DCore.gluing(pieces, labels=None)` takes one connected positive definite A-type piece per core
+edge. It checks that each piece contains its core edge with the same style, that both endpoints are
+internal vertices, and that consecutive pieces overlap only at the shared core vertex. It returns a
+`DCoreGluingCertificate` whose `verify()` recomputes the construction.
+
+```python
+from dynkinlab import Bigraph, DCore, EdgeStyle, QuasiCartanMatrix
+
+first = Bigraph(QuasiCartanMatrix(((2, -1), (-1, 2))), (1, 2))
+second = Bigraph(
+    QuasiCartanMatrix(
+        ((2, 1, -1, 0), (1, 2, -1, 0), (-1, -1, 2, -1), (0, 0, -1, 2)),
+    ),
+    (1, 2, 3, 4),
+)
+core = DCore.cycle((1, 2), (EdgeStyle.SOLID, EdgeStyle.DOTTED))
+certificate = core.gluing((first, second), labels=(1, 2, 3, 4))
+assert certificate.verify()
+assert certificate.dynkin_type.name == "D_4"
+```
+
+The certificate exposes `core`, `pieces`, `gluing`, `dynkin_type`, and `verify()`. The D13 example
+uses the five pieces A3, A4, A2, A7, and A2 along the odd five-cycle and produces the 13-vertex
+D13 bigraph.
+
+### A-cyclization
+
+`Bigraph.a_cyclization(source, target)` requires a connected positive definite A-type bigraph with at
+least five vertices. The two labels must be internal vertices joined by a unique shortest path of
+length at least two with an odd number of dotted edges. Identifying them produces D_{n-1}, returned
+as an `ACyclizationCertificate` with `source`, `x`, `y`, `path`, `result`, `dynkin_type`, and
+`verify()`.
+
+```python
+from dynkinlab import Bigraph, QuasiCartanMatrix
+
+source = Bigraph(
+    QuasiCartanMatrix(
+        (
+            (2, -1, 0, 0, 0),
+            (-1, 2, -1, 0, 0),
+            (0, -1, 2, 1, 0),
+            (0, 0, 1, 2, -1),
+            (0, 0, 0, -1, 2),
+        ),
+    ),
+    (1, 2, 3, 4, 5),
+)
+certificate = source.a_cyclization(1, 5)
+assert certificate.verify()
+assert certificate.dynkin_type.name == "D_4"
+```
+
+The thesis's A9 example uses internal vertices 1 and 6 along the path 1-3-5-6 to produce D8.
 
 ## Dynkin types
 
@@ -376,4 +516,4 @@ print(result.to_markdown())
 
 ## Planned surface
 
-Later changes add the structural D-type decomposition and affine classification.
+Later changes add affine classification and the thesis companion notebook.

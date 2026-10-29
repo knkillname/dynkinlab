@@ -266,6 +266,139 @@ class Bigraph:
         return self.a_type_certificate() is not None
 
     @staticmethod
+    def _sum_labels(
+        pieces: tuple["Bigraph", ...],
+        labels: Iterable[Hashable] | None,
+    ) -> tuple[Hashable, ...]:
+        """Return the validated label order for a sum."""
+        union: list[Hashable] = []
+        seen: set[Hashable] = set()
+        for piece in pieces:
+            if not isinstance(piece, Bigraph):
+                raise ValueError("pieces must be Bigraph values")
+            for label in piece.labels:
+                if label not in seen:
+                    union.append(label)
+                    seen.add(label)
+        if labels is None:
+            return tuple(union)
+        try:
+            ordered = tuple(labels)
+        except TypeError as error:
+            raise ValueError("labels must be an iterable") from error
+        try:
+            provided = set(ordered)
+        except TypeError as error:
+            raise ValueError("labels must be hashable") from error
+        if len(provided) != len(ordered):
+            raise ValueError("labels must be unique")
+        if provided != set(union):
+            raise ValueError("labels must cover exactly the union of piece labels")
+        return ordered
+
+    @classmethod
+    def sum(
+        cls,
+        *pieces: "Bigraph",
+        labels: Iterable[Hashable] | None = None,
+    ) -> "Bigraph":
+        """Sum symmetric bigraphs by identifying shared labels.
+
+        Off-diagonal weights add and cancel, while every diagonal entry stays
+        at 2. The result uses first-appearance label order unless an explicit
+        order is supplied.
+
+        Parameters
+        ----------
+        *pieces : Bigraph
+            Symmetric bigraphs to combine.
+        labels : Iterable[Hashable] | None
+            Optional label order covering exactly the union of piece labels.
+
+        Returns
+        -------
+        Bigraph
+            The simplified sum.
+
+        Raises
+        ------
+        ValueError
+            If no pieces are supplied, a piece is not a `Bigraph`, a piece
+            contains an arrow, or an explicit label order is invalid.
+        """
+        if not pieces:
+            raise ValueError("at least one bigraph is required")
+        ordered = cls._sum_labels(pieces, labels)
+        order = {label: index for index, label in enumerate(ordered)}
+        entries = [
+            [2 if row == column else 0 for column in range(len(ordered))]
+            for row in range(len(ordered))
+        ]
+        for piece in pieces:
+            for edge in piece.edges:
+                if edge.directed:
+                    raise ValueError("sum requires symmetric bigraphs")
+                source = order[edge.source]
+                target = order[edge.target]
+                entries[source][target] += edge.weight
+                entries[target][source] += edge.weight
+        return cls(QuasiCartanMatrix(entries), ordered)
+
+    def identify(self, source: Hashable, target: Hashable) -> "Bigraph":
+        """Merge ``target`` into ``source`` and simplify the result.
+
+        Parameters
+        ----------
+        source : Hashable
+            Label retained in the result.
+        target : Hashable
+            Label removed from the result.
+
+        Returns
+        -------
+        Bigraph
+            The merged bigraph with opposite parallel edges cancelled.
+
+        Raises
+        ------
+        ValueError
+            If the labels are equal, either label is absent, or the bigraph
+            contains an arrow.
+        """
+        from dynkinlab.edge_multiset import EdgeMultiset
+
+        return EdgeMultiset.from_bigraph(self).identify(source, target).simplify()
+
+    def a_cyclization(
+        self,
+        source: Hashable,
+        target: Hashable,
+    ) -> "dynkinlab.structure_d.ACyclizationCertificate":
+        """Identify two internal vertices of a connected A-type source.
+
+        Parameters
+        ----------
+        source : Hashable
+            First internal label.
+        target : Hashable
+            Second internal label.
+
+        Returns
+        -------
+        ACyclizationCertificate
+            A verifiable certificate for the resulting D_{n-1} bigraph.
+
+        Raises
+        ------
+        ValueError
+            If the source, endpoints, shortest path, or result fail the
+            A-cyclization hypotheses.
+        """
+        from dynkinlab.structure_d import build_a_cyclization
+
+        return build_a_cyclization(self, source, target)
+
+    @staticmethod
     def _effective_options(options: DisplayOptions | None) -> DisplayOptions:
         """Return the explicit options or the canonical display options."""
         return display.options if options is None else options

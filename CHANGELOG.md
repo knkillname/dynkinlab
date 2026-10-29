@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   first-class `FlationStep` / `FlationSequence` witnesses.
 - Structural bigraph inspection with `to_networkx`, block-cut forests, A-block partitions, and
   verifiable A-type certificates.
+- Structural D-type certificates: `EdgeMultiset`, `Bigraph.sum`, `Bigraph.identify`, D-core gluing
+  certificates, and A-cyclization certificates.
 - `DynkinType` for the full finite A–G list and an exact cubic `DynkinClassification`
   classifier with exact inertia, normal forms, witnesses, and a documented G2 extension.
 - Colab/Jupyter Markdown and HTML rendering for matrices, forms, inertia, mixed bigraphs, and Dynkin

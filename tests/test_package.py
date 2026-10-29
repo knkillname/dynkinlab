@@ -9,6 +9,10 @@ from pathlib import Path
 
 import dynkinlab
 from dynkinlab import (
+    ACyclizationCertificate,
+    DCore,
+    DCoreGluingCertificate,
+    EdgeMultiset,
     Inertia,
     NotSymmetrizableError,
     QuadraticForm,
@@ -28,6 +32,7 @@ class TestPackage:
     def test_public_surface(self) -> None:
         assert dynkinlab.__all__ == [
             "ABlockPartition",
+            "ACyclizationCertificate",
             "ATypeCertificate",
             "ATypeComponentCertificate",
             "Bigraph",
@@ -37,8 +42,11 @@ class TestPackage:
             "BlockCutTree",
             "ClassificationStatus",
             "ComponentClassification",
+            "DCore",
+            "DCoreGluingCertificate",
             "DynkinClassification",
             "DynkinType",
+            "EdgeMultiset",
             "EdgeStyle",
             "FlationSequence",
             "FlationStep",
@@ -52,6 +60,7 @@ class TestPackage:
         ]
         assert set(dynkinlab.__all__) == {
             "ABlockPartition",
+            "ACyclizationCertificate",
             "ATypeCertificate",
             "ATypeComponentCertificate",
             "Bigraph",
@@ -61,8 +70,11 @@ class TestPackage:
             "BlockCutTree",
             "ClassificationStatus",
             "ComponentClassification",
+            "DCore",
+            "DCoreGluingCertificate",
             "DynkinClassification",
             "DynkinType",
+            "EdgeMultiset",
             "EdgeStyle",
             "FlationSequence",
             "FlationStep",
@@ -92,6 +104,12 @@ class TestPackage:
         assert isinstance(matrix.inertia, Inertia)
         assert matrix.inertia == Inertia(2, 0, 0)
         assert Inertia.from_matrix(matrix) == Inertia(2, 0, 0)
+
+    def test_d_structural_types_are_importable(self) -> None:
+        assert EdgeMultiset.__name__ == "EdgeMultiset"
+        assert DCore.__name__ == "DCore"
+        assert DCoreGluingCertificate.__name__ == "DCoreGluingCertificate"
+        assert ACyclizationCertificate.__name__ == "ACyclizationCertificate"
 
     def test_symmetrizer_certificate_types_are_importable(self) -> None:
         certificate = SymmetrizerCertificate(

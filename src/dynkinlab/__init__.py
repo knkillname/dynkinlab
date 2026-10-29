@@ -11,6 +11,7 @@ from dynkinlab.dynkin import (
     DynkinClassification,
     DynkinType,
 )
+from dynkinlab.edge_multiset import EdgeMultiset
 from dynkinlab.flation import FlationSequence, FlationStep
 from dynkinlab.inertia import Inertia
 from dynkinlab.quadratic_form import QuadraticForm
@@ -23,6 +24,11 @@ from dynkinlab.structure import (
     BlockCutForest,
     BlockCutTree,
 )
+from dynkinlab.structure_d import (
+    ACyclizationCertificate,
+    DCore,
+    DCoreGluingCertificate,
+)
 from dynkinlab.symmetrizer import (
     NotSymmetrizableError,
     SymmetrizerCertificate,
@@ -33,6 +39,7 @@ __version__ = "0.0.1"
 
 __all__ = [
     "ABlockPartition",
+    "ACyclizationCertificate",
     "ATypeCertificate",
     "ATypeComponentCertificate",
     "Bigraph",
@@ -42,8 +49,11 @@ __all__ = [
     "BlockCutTree",
     "ClassificationStatus",
     "ComponentClassification",
+    "DCore",
+    "DCoreGluingCertificate",
     "DynkinClassification",
     "DynkinType",
+    "EdgeMultiset",
     "EdgeStyle",
     "FlationSequence",
     "FlationStep",
