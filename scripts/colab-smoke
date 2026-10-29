@@ -1,0 +1,86 @@
+#!/bin/sh
+
+# SPDX-FileCopyrightText: 2026-present Mario Abarca <knkillname@gmail.com>
+#
+# SPDX-License-Identifier: MIT
+#
+# Run the pinned Colab CPU image and assert the supported runtime contract.
+#
+# The image reference lives in scripts/colab-image so that this script, CI, and
+# documentation all agree on one digest.
+
+set -eu
+
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+repo_root=$(CDPATH= cd -- "$script_dir/.." && pwd)
+image_file="$script_dir/colab-image"
+
+if [ ! -f "$image_file" ]; then
+    printf 'colab-smoke: missing image reference: %s\n' "$image_file" >&2
+    exit 1
+fi
+
+image=$(tr -d '[:space:]' < "$image_file")
+
+case "$image" in
+    *@sha256:*) ;;
+    *)
+        printf 'colab-smoke: image must be pinned by a sha256 digest: %s\n' "$image" >&2
+        exit 1
+        ;;
+esac
+
+case "$image" in
+    *latest*)
+        printf 'colab-smoke: the mutable latest tag is not allowed: %s\n' "$image" >&2
+        exit 1
+        ;;
+esac
+
+if ! command -v docker >/dev/null 2>&1; then
+    printf 'colab-smoke: Docker is required. Install Docker and try again.\n' >&2
+    exit 1
+fi
+
+if ! docker info >/dev/null 2>&1; then
+    printf 'colab-smoke: the Docker daemon is not available.\n' >&2
+    exit 1
+fi
+
+check=$(cat <<'PY'
+import re
+import sys
+
+import matplotlib
+import networkx
+
+
+def release(value: str) -> tuple[int, ...]:
+    return tuple(int(part) for part in re.findall(r"\d+", value)[:2])
+
+
+assert sys.version_info[:2] == (3, 13), sys.version
+assert release(networkx.__version__) >= (3, 7), networkx.__version__
+assert release(matplotlib.__version__) >= (3, 10), matplotlib.__version__
+
+import dynkinlab
+
+assert isinstance(dynkinlab.__version__, str)
+assert dynkinlab.__version__
+
+print(f"Python {sys.version.split()[0]}")
+print(f"NetworkX {networkx.__version__}")
+print(f"matplotlib {matplotlib.__version__}")
+print(f"dynkinlab {dynkinlab.__version__}")
+PY
+)
+
+printf 'colab-smoke: running %s\n' "$image"
+docker run --rm \
+    --platform linux/amd64 \
+    -v "$repo_root":/content/dynkinlab:ro \
+    -w /content/dynkinlab \
+    -e PYTHONPATH=/content/dynkinlab/src \
+    -e PYTHONDONTWRITEBYTECODE=1 \
+    --entrypoint python \
+    "$image" -c "$check"

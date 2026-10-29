@@ -1,0 +1,135 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dynkinlab"
+dynamic = ["version"]
+description = "Typed Dynkin diagram and bigraph algorithms for Python"
+readme = "README.md"
+requires-python = ">=3.13"
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["bigraph", "colab", "dynkin", "quiver", "representation-theory"]
+authors = [
+  { name = "Mario Abarca", email = "knkillname@gmail.com" },
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: Implementation :: CPython",
+  "Topic :: Scientific/Engineering :: Mathematics",
+  "Typing :: Typed",
+]
+dependencies = [
+  "networkx>=3.7",
+  "matplotlib>=3.10",
+]
+
+[project.optional-dependencies]
+docs = [
+  "furo>=2025.9",
+  "myst-nb>=1.2",
+  "myst-parser>=4.0",
+  "sphinx>=9.0,<10",
+  "sphinx-autobuild>=2024.10",
+  "sphinx-copybutton>=0.5",
+  "sphinx-design>=0.6",
+]
+
+[project.urls]
+Documentation = "https://knkillname.github.io/dynkinlab/"
+Issues = "https://github.com/knkillname/dynkinlab/issues"
+Source = "https://github.com/knkillname/dynkinlab"
+
+[tool.hatch.version]
+path = "src/dynkinlab/__about__.py"
+
+[tool.hatch.envs.hatch-test]
+extra-dependencies = [
+  "hypothesis>=6.0",
+  "pytest-cov>=6.0",
+]
+
+[[tool.hatch.envs.hatch-test.matrix]]
+python = ["3.13"]
+
+[tool.hatch.envs.docs]
+features = ["docs"]
+
+[tool.hatch.envs.docs.scripts]
+build = "sphinx-build -W --keep-going -b html docs docs/_build/html"
+serve = "sphinx-autobuild docs docs/_build/html"
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+  "ANN",
+  "ARG",
+  "B",
+  "C4",
+  "D",
+  "DTZ",
+  "E",
+  "F",
+  "I",
+  "N",
+  "PTH",
+  "PL",
+  "PT",
+  "RUF",
+  "SIM",
+  "TID",
+  "UP",
+  "W",
+]
+ignore = [
+  "D203",
+  "D213",
+  "PLR0913",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = [
+  "ANN",
+  "ARG",
+  "D",
+  "PLR2004",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "numpy"
+
+[tool.pyrefly]
+preset = "strict"
+project-includes = ["src/dynkinlab", "tests"]
+search-path = ["src", "."]
+python-version = "3.13"
+disable-search-path-heuristics = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov=dynkinlab --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["dynkinlab"]
+branch = true
+omit = [
+  "src/dynkinlab/__about__.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 80
+exclude_lines = [
+  "no cov",
+  "if __name__ == .__main__.:",
+  "if TYPE_CHECKING:",
+]

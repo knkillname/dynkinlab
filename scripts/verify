@@ -1,0 +1,81 @@
+#!/bin/sh
+
+# SPDX-FileCopyrightText: 2026-present Mario Abarca <knkillname@gmail.com>
+#
+# SPDX-License-Identifier: MIT
+#
+# Run the host quality gates and, unless skipped, the pinned Colab smoke gate.
+#
+# Usage: scripts/verify [--skip-colab]
+
+set -eu
+
+usage() {
+    cat <<'USAGE'
+Usage: scripts/verify [--skip-colab]
+
+Run the verification sequence:
+  1. hatch check
+  2. hatch test
+  3. scripts/colab-smoke
+
+Options:
+  --skip-colab  Skip the pinned Colab compatibility gate.
+  -h, --help    Show this help.
+USAGE
+}
+
+skip_colab=0
+
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --skip-colab)
+            skip_colab=1
+            ;;
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        *)
+            printf 'verify: unknown argument: %s\n' "$1" >&2
+            usage >&2
+            exit 2
+            ;;
+    esac
+    shift
+done
+
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+repo_root=$(CDPATH= cd -- "$script_dir/.." && pwd)
+cd "$repo_root"
+
+run_stage() {
+    label=$1
+    shift
+    printf '\n==> %s\n' "$label"
+    started=$(date +%s)
+    if "$@"; then
+        finished=$(date +%s)
+        printf '==> %s: ok (%ss)\n' "$label" "$((finished - started))"
+    else
+        status=$?
+        printf '==> %s: failed\n' "$label" >&2
+        exit "$status"
+    fi
+}
+
+if ! command -v hatch >/dev/null 2>&1; then
+    printf 'verify: hatch is required. Install it with: uv tool install hatch\n' >&2
+    exit 1
+fi
+
+run_stage "hatch check" hatch check
+run_stage "hatch test" hatch test
+
+if [ "$skip_colab" -eq 1 ]; then
+    printf '\n==> Colab compatibility gate: skipped (--skip-colab)\n'
+else
+    run_stage "Colab compatibility gate" "$repo_root/scripts/colab-smoke"
+fi
+
+printf '\nverify: all requested checks passed\n'

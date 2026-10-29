@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-10-29
+goal: A green, typed, tested package skeleton that installs in Colab, enforces
+  hatch check --fix and hatch test, and pins networkx>=3.7 and matplotlib>=3.10.

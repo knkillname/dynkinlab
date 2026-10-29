@@ -1,0 +1,195 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
+
+      - name: Install Hatch
+        run: uv tool install hatch
+
+      - name: Add Hatch to PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Cache Hatch environments
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            ~/.local/share/hatch
+          key: hatch-${{ runner.os }}-py3.13-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            hatch-${{ runner.os }}-py3.13-
+
+      - name: Check
+        run: hatch check
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
+
+      - name: Install Hatch
+        run: uv tool install hatch
+
+      - name: Add Hatch to PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Cache Hatch environments
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            ~/.local/share/hatch
+          key: hatch-test-${{ runner.os }}-py3.13-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            hatch-test-${{ runner.os }}-py3.13-
+
+      - name: Test
+        run: hatch test
+
+  package:
+    name: Package
+    needs: check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
+
+      - name: Build distributions
+        run: uv build
+
+      - name: Install wheel in a clean environment
+        run: |
+          uv venv --python 3.13 .wheel-smoke
+          uv pip install --python .wheel-smoke/bin/python dist/*.whl
+
+      - name: Smoke test the installed wheel
+        run: |
+          .wheel-smoke/bin/python - <<'PY'
+          import importlib.metadata
+
+          import dynkinlab
+
+          metadata = importlib.metadata.metadata("dynkinlab")
+          assert dynkinlab.__version__
+          assert metadata["Version"] == dynkinlab.__version__
+          assert metadata["Requires-Python"] == ">=3.13"
+          requirements = metadata.get_all("Requires-Dist") or []
+          assert any("networkx>=3.7" in requirement for requirement in requirements)
+          assert any("matplotlib>=3.10" in requirement for requirement in requirements)
+          PY
+
+      - name: Verify wheel contents
+        run: |
+          python - <<'PY'
+          import glob
+          import zipfile
+
+          wheel = glob.glob("dist/*.whl")[0]
+          with zipfile.ZipFile(wheel) as archive:
+              names = set(archive.namelist())
+          assert "dynkinlab/py.typed" in names, sorted(names)
+          assert any(name.endswith("LICENSE") for name in names), sorted(names)
+          PY
+
+  colab:
+    name: Colab compatibility
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Read pinned Colab image
+        run: echo "COLAB_IMAGE=$(cat scripts/colab-image)" >> "$GITHUB_ENV"
+
+      - name: Verify the image reference is pinned
+        run: |
+          image=$(cat scripts/colab-image)
+          printf '%s\n' "$image" | grep -Eq '@sha256:[0-9a-f]{64}$'
+          if printf '%s\n' "$image" | grep -q 'latest'; then
+            echo "The Colab image must not use the latest tag." >&2
+            exit 1
+          fi
+          echo "Pinned Colab image: $image"
+
+      - name: Run the Colab smoke gate
+        run: scripts/colab-smoke
+
+  docs:
+    name: Docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: false
+
+      - name: Install Hatch
+        run: uv tool install hatch
+
+      - name: Add Hatch to PATH
+        run: echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Cache Hatch environments
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/uv
+            ~/.local/share/hatch
+          key: docs-${{ runner.os }}-py3.13-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            docs-${{ runner.os }}-py3.13-
+
+      - name: Build documentation
+        run: hatch run docs:build

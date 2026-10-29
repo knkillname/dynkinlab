@@ -1,0 +1,25 @@
+#!/bin/sh
+
+# SPDX-FileCopyrightText: 2026-present Mario Abarca <knkillname@gmail.com>
+#
+# SPDX-License-Identifier: MIT
+#
+# Run the fast local verification sequence before a push.
+#
+# Enable it once per clone with:
+#   git config core.hooksPath .githooks
+
+set -eu
+
+if ! repo_root=$(git rev-parse --show-toplevel 2>/dev/null); then
+    printf 'pre-push: not inside a Git work tree.\n' >&2
+    exit 1
+fi
+
+cd "$repo_root"
+
+printf '\npre-push: running local verification...\n'
+if ! "$repo_root/scripts/verify" --skip-colab; then
+    printf '\npre-push: verification failed; push aborted.\n' >&2
+    exit 1
+fi
