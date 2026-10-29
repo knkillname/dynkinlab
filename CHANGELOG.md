@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A VS Code Dev Container based on the latest Google Colab CPU runtime, with Python/Jupyter
+  extensions, a notebook-ready Hatch environment, OpenCode, and Docker-in-Docker for the Colab gate.
 - Non-symmetrizable `QuasiCartanMatrix` construction now raises `NotSymmetrizableError` carrying a
   verifiable `SymmetrizerCertificate` for zero entries, opposite signs, or inconsistent cycles.
 - NumPy 2.1 or newer is now a declared runtime dependency, used for the classifier's bounded

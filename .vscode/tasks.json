@@ -1,0 +1,61 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "verify: full",
+      "type": "shell",
+      "command": "scripts/verify",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "verify: skip Colab",
+      "type": "shell",
+      "command": "scripts/verify --skip-colab",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "hatch: check",
+      "type": "shell",
+      "command": "hatch check",
+      "group": "test",
+      "problemMatcher": []
+    },
+    {
+      "label": "hatch: check (fix)",
+      "type": "shell",
+      "command": "hatch check --fix",
+      "problemMatcher": []
+    },
+    {
+      "label": "hatch: test",
+      "type": "shell",
+      "command": "hatch test",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "docs: build",
+      "type": "shell",
+      "command": "hatch run docs:build",
+      "problemMatcher": []
+    },
+    {
+      "label": "docs: serve",
+      "type": "shell",
+      "command": "hatch run docs:serve",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "colab: smoke",
+      "type": "shell",
+      "command": "scripts/colab-smoke",
+      "problemMatcher": []
+    }
+  ]
+}

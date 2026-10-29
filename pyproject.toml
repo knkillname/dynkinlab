@@ -57,6 +57,7 @@ extra-dependencies = [
 [tool.hatch.envs.hatch-test]
 extra-dependencies = [
   "hypothesis>=6.0",
+  "ipykernel>=6.0",
   "pytest-cov>=6.0",
 ]
 

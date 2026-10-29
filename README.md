@@ -137,6 +137,19 @@ The Colab compatibility gate is separate because the pinned runtime image is lar
 scripts/verify
 ```
 
+### Dev container
+
+The repository includes a VS Code Dev Container based on the latest Google Colab CPU runtime, with
+Hatch, OpenCode, pre-created test and docs environments, and Docker-in-Docker for the Colab gate.
+Install the **Dev Containers** extension, open the repository, and run
+**Dev Containers: Reopen in Container**.
+
+The container has tasks for the usual workflows: **Tasks: Run Task** → `verify: full`,
+`verify: skip Colab`, `hatch: test`, or `docs: serve`. Run `opencode` in the integrated terminal to
+work inside the container with the agent. The selected Hatch environment includes `ipykernel`, so
+VS Code notebooks run without installing a separate kernel. The first full verification downloads
+the separate pinned Colab image used by the compatibility gate into the container's Docker daemon.
+
 ## Documentation
 
 The Sphinx documentation lives under `docs/`. Build it with:
