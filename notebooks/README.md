@@ -1,27 +1,58 @@
 # Notebooks
 
-This directory holds the Colab notebooks for DynkinLab. The current value objects render as HTML
-tables or Markdown in Colab; a full quickstart notebook will follow.
+This directory holds the thesis companion notebook, a short computational paper about the A/D
+classification of quasi-Cartan matrices. It is deliberately not an API tutorial: the matrix and its
+structural certificates are the subject, and the drawings are supporting views.
+
+## Files
+
+- `thesis-companion.py` is the editable source. It uses the Jupytext percent format: `# %%` starts a
+  code cell and `# %% [markdown]` starts a Markdown cell whose lines are prefixed with `# `.
+- `thesis-companion.ipynb` is generated from the source and is the artifact to open in Colab. It is
+  committed with its computed tables and figures.
+
+Edit the Python source, then regenerate the notebook:
+
+```console
+jupytext --to ipynb notebooks/thesis-companion.py --output notebooks/thesis-companion.ipynb
+```
+
+The source contains no IPython magics, so it also remains valid Python. The notebook-local display
+and drawing helpers stay in the source; they are not part of the package API.
 
 ## Colab workflow
 
-1. Open the notebook in Google Colab and select a CPU runtime.
-2. Install the package in the first cell:
+1. Open `thesis-companion.ipynb` from the repository in Google Colab and select a CPU runtime.
+2. In Colab, the setup cell installs the latest DynkinLab from the project's git default branch:
 
-   ```console
-   !pip install dynkinlab
+   ```text
+   dynkinlab @ git+https://github.com/knkillname/dynkinlab.git@main
    ```
 
-3. Import the package and keep any generated files under `/content`. The Colab filesystem is
-   ephemeral; mount Google Drive when a file must outlive the runtime.
+   The command uses `-U` and selects no commit, tag, or package version. A local checkout skips the
+   install and uses the package available in the current environment.
+3. Run all cells. The final cell reports the installed package version and confirms that every
+   certificate verified.
 
-The compatibility assertions run inside the dev container against the same latest CPU image that
-Colab uses, so the dependency floors and interpreter version are checked before a release.
+The notebook uses only DynkinLab, NumPy, NetworkX, matplotlib, and the Jupyter/IPython runtime
+provided by Colab.
+
+## Local verification
+
+The smoke test parses the Python source, checks that the committed notebook has the same cell
+types and normalized sources, and executes the source-derived notebook in a clean kernel:
+
+```console
+hatch test tests/test_notebook.py --no-cov
+```
+
+The full `hatch test` run includes this check. Regenerate the notebook whenever the source changes;
+the comparison fails on drift.
 
 ## Rich display
 
-Matrices render as HTML tables, while quadratic forms and inertia render as Markdown. Notebook-wide
-defaults live in `dynkinlab.display.options`:
+Library value objects still render as HTML or Markdown in Colab. Notebook-wide defaults live in
+`dynkinlab.display.options`:
 
 ```python
 import dynkinlab
@@ -32,10 +63,3 @@ dynkinlab.display.options.expanded_form_dimension_limit = 4
 
 Rendering methods also accept a per-call `DisplayOptions` object. See the
 [API reference](../docs/reference/index.md) for the full display API.
-
-## Future quickstart notebook
-
-`notebooks/quickstart.ipynb` will demonstrate the first mathematical workflow: building a
-quasi-Cartan matrix, computing its quadratic form and inertia, rendering the objects inline, and
-visualizing a bigraph. Until that notebook exists, use the
-[quickstart page](../docs/getting-started/quickstart.md) for the installation check.

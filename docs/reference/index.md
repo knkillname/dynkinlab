@@ -516,4 +516,4 @@ print(result.to_markdown())
 
 ## Planned surface
 
-Later changes add affine classification and the thesis companion notebook.
+Later changes add affine classification.

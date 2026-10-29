@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A script-first thesis companion notebook (`notebooks/thesis-companion.py` plus the generated
+  Colab notebook) with matrix-first A/D certificates, deterministic figures, a boundary table, and
+  a latest-version git install that tracks the project's default branch.
 - A VS Code Dev Container based on the latest Google Colab CPU runtime, with Python/Jupyter
   extensions, a notebook-ready Hatch environment, and OpenCode.
 - Non-symmetrizable `QuasiCartanMatrix` construction now raises `NotSymmetrizableError` carrying a

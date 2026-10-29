@@ -120,8 +120,9 @@ dynkinlab.display.options.reset()
 
 A per-call `DisplayOptions` object overrides the canonical settings for that call only.
 
-## Notebooks in Colab
+## Companion notebook
 
-The [notebooks guide](https://github.com/knkillname/dynkinlab/blob/main/notebooks/README.md)
-describes the Colab workflow and the planned quickstart notebook. Notebook files live in the
-repository's `notebooks/` directory.
+The [thesis companion notebook](https://github.com/knkillname/dynkinlab/blob/main/notebooks/thesis-companion.ipynb)
+is an executable, matrix-first paper covering flation, the A9 certificate, the D13 D-core gluing,
+and the A9-to-D8 cyclization. Its editable Python source and the Colab workflow are described in
+the [notebooks guide](https://github.com/knkillname/dynkinlab/blob/main/notebooks/README.md).
