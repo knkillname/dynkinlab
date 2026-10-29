@@ -6,7 +6,7 @@
 import pytest
 
 import dynkinlab
-from dynkinlab import Inertia, QuasiCartanMatrix
+from dynkinlab import Bigraph, DynkinType, FlationSequence, FlationStep, Inertia, QuasiCartanMatrix
 from dynkinlab.display import DisplayOptions, options
 
 
@@ -18,6 +18,11 @@ class TestDisplayOptions:
 
         assert display_options.expanded_form_dimension_limit == 3
         assert display_options.matrix_index_base == 0
+        assert display_options.bigraph_layout_seed == 0
+        assert display_options.bigraph_figure_size == (4.0, 4.0)
+        assert display_options.bigraph_show_labels is True
+        assert display_options.bigraph_show_multiplicity is True
+        assert display_options.bigraph_arrow_style == "arrow"
 
     def test_canonical_instance_is_a_display_options_object(self) -> None:
         assert isinstance(options, DisplayOptions)
@@ -30,9 +35,19 @@ class TestDisplayOptions:
 
         display_options.expanded_form_dimension_limit = 5
         display_options.matrix_index_base = 1
+        display_options.bigraph_layout_seed = 7
+        display_options.bigraph_figure_size = (5, 3)
+        display_options.bigraph_show_labels = False
+        display_options.bigraph_show_multiplicity = False
+        display_options.bigraph_arrow_style = "line"
 
         assert display_options.expanded_form_dimension_limit == 5
         assert display_options.matrix_index_base == 1
+        assert display_options.bigraph_layout_seed == 7
+        assert display_options.bigraph_figure_size == (5.0, 3.0)
+        assert display_options.bigraph_show_labels is False
+        assert display_options.bigraph_show_multiplicity is False
+        assert display_options.bigraph_arrow_style == "line"
 
     @pytest.mark.parametrize("field", ["expanded_form_dimension_limit", "matrix_index_base"])
     @pytest.mark.parametrize("value", [-1, 1.5, "3", True])
@@ -46,12 +61,45 @@ class TestDisplayOptions:
         display_options = DisplayOptions(
             expanded_form_dimension_limit=5,
             matrix_index_base=1,
+            bigraph_layout_seed=7,
+            bigraph_figure_size=(5, 3),
+            bigraph_show_labels=False,
+            bigraph_show_multiplicity=False,
+            bigraph_arrow_style="line",
         )
 
         display_options.reset()
 
         assert display_options.expanded_form_dimension_limit == 3
         assert display_options.matrix_index_base == 0
+        assert display_options.bigraph_layout_seed == 0
+        assert display_options.bigraph_figure_size == (4.0, 4.0)
+        assert display_options.bigraph_show_labels is True
+        assert display_options.bigraph_show_multiplicity is True
+        assert display_options.bigraph_arrow_style == "arrow"
+
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        [
+            ("bigraph_layout_seed", -1),
+            ("bigraph_layout_seed", True),
+            ("bigraph_figure_size", (0, 4)),
+            ("bigraph_figure_size", (4,)),
+            ("bigraph_figure_size", ("4", 4)),
+            ("bigraph_show_labels", 1),
+            ("bigraph_show_multiplicity", "yes"),
+            ("bigraph_arrow_style", "dashed"),
+        ],
+    )
+    def test_invalid_bigraph_values_raise_value_error(
+        self,
+        field: str,
+        value: object,
+    ) -> None:
+        display_options = DisplayOptions()
+
+        with pytest.raises(ValueError, match=field):
+            setattr(display_options, field, value)
 
 
 class TestMatrixDisplay:
@@ -268,6 +316,138 @@ class TestDisplayPrecedenceAndRepr:
             (inertia, "Inertia("),
         )
         for value, prefix in expected_prefixes:
+            text = repr(value)
+            assert text.startswith(prefix)
+            assert "<table" not in text
+            assert "|" not in text
+
+
+class TestNonSymmetricMatrixDisplay:
+    """Verify the general matrix still displays its original entries."""
+
+    def test_markdown_uses_original_entries(self) -> None:
+        matrix = QuasiCartanMatrix(((2, -1), (-2, 2)))
+
+        markdown = matrix.to_markdown(options=DisplayOptions(matrix_index_base=0))
+
+        assert "|   | 0 | 1 |" in markdown
+        assert "| 0 | 2 | -1 |" in markdown
+        assert "| 1 | -2 | 2 |" in markdown
+
+    def test_html_and_hook_use_original_entries(self) -> None:
+        matrix = QuasiCartanMatrix(((2, -1), (-2, 2)))
+
+        html = matrix.to_html(options=DisplayOptions(matrix_index_base=0))
+
+        assert "<td>-2</td>" in html
+        assert matrix._repr_html_() == matrix.to_html()
+
+
+class TestBigraphDisplay:
+    """Verify bigraph Markdown, HTML, and display options."""
+
+    def test_markdown_summarizes_arrow(self) -> None:
+        bigraph = Bigraph(QuasiCartanMatrix(((2, -1), (-2, 2))), ("a", "b"))
+
+        markdown = bigraph.to_markdown()
+
+        assert "| a | b | arrow | solid | 2 |" in markdown
+
+    def test_markdown_distinguishes_dotted_edges(self) -> None:
+        bigraph = Bigraph(QuasiCartanMatrix(((2, 1), (1, 2))), ("a", "b"))
+
+        markdown = bigraph.to_markdown()
+
+        assert "| a | b | edge | dotted | 1 |" in markdown
+
+    def test_markdown_multiplicity_can_be_hidden(self) -> None:
+        bigraph = Bigraph(QuasiCartanMatrix(((2, -1), (-2, 2))), ("a", "b"))
+
+        hidden = bigraph.to_markdown(
+            options=DisplayOptions(bigraph_show_multiplicity=False),
+        )
+
+        assert "multiplicity" not in hidden
+        assert "multiplicity" in bigraph.to_markdown()
+
+    def test_canonical_multiplicity_option_and_override(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        bigraph = Bigraph(QuasiCartanMatrix(((2, -1), (-2, 2))), ("a", "b"))
+        monkeypatch.setattr(dynkinlab.display.options, "bigraph_show_multiplicity", False)
+
+        assert "multiplicity" not in bigraph.to_markdown()
+        assert "multiplicity" in bigraph.to_markdown(
+            options=DisplayOptions(bigraph_show_multiplicity=True),
+        )
+        assert dynkinlab.display.options.bigraph_show_multiplicity is False
+        dynkinlab.display.options.reset()
+
+    def test_html_contains_svg_and_edge_summary(self) -> None:
+        bigraph = Bigraph(QuasiCartanMatrix(((2, -1), (-2, 2))), ("a", "b"))
+
+        html = bigraph.to_html()
+
+        assert "<svg" in html
+        assert 'data-edges="a -&gt; b (solid 2)"' in html
+        assert "a" in html and "b" in html
+        assert bigraph._repr_html_() == bigraph.to_html()
+
+    def test_dotted_html_uses_dashed_stroke(self) -> None:
+        bigraph = Bigraph(QuasiCartanMatrix(((2, 1), (1, 2))), ("a", "b"))
+
+        html = bigraph.to_html()
+
+        assert "stroke-dasharray" in html
+
+
+class TestDynkinDisplay:
+    """Verify Dynkin type and classification rendering."""
+
+    def test_type_markdown_and_hook(self) -> None:
+        dynkin_type = DynkinType("A", 3)
+
+        assert "A_3" in dynkin_type.to_markdown()
+        assert dynkin_type._repr_markdown_() == dynkin_type.to_markdown()
+
+    def test_classification_markdown_and_hook(self) -> None:
+        result = QuasiCartanMatrix(((2, -1), (-1, 2))).classify()
+
+        markdown = result.to_markdown()
+
+        assert "CLASSIFIED" in markdown
+        assert "`A_2`" in markdown
+        assert "Steps:" in markdown
+        assert "positive definite" in markdown
+        assert result._repr_markdown_() == markdown
+
+    def test_non_finite_classification_renders_diagnostics(self) -> None:
+        result = QuasiCartanMatrix(
+            ((2, -1, -1), (-1, 2, -1), (-1, -1, 2)),
+        ).classify()
+
+        markdown = result.to_markdown()
+
+        assert "NOT_POSITIVE_DEFINITE" in markdown
+        assert "degenerate" in markdown
+
+
+class TestNewValueRepr:
+    """Verify new value objects keep plain dataclass-style repr."""
+
+    def test_repr_stays_plain(self) -> None:
+        bigraph = Bigraph(QuasiCartanMatrix(((2, -1), (-2, 2))), ("a", "b"))
+        result = bigraph.classify()
+        sequence = FlationSequence((FlationStep("a", "b"),))
+
+        values_and_prefixes = (
+            (bigraph, "Bigraph("),
+            (DynkinType("A", 3), "DynkinType("),
+            (result, "DynkinClassification("),
+            (sequence, "FlationSequence("),
+        )
+        for value, prefix in values_and_prefixes:
             text = repr(value)
             assert text.startswith(prefix)
             assert "<table" not in text

@@ -5,6 +5,7 @@
 
 from dataclasses import dataclass
 from fractions import Fraction
+from typing import cast
 
 from dynkinlab.matrix import MatrixLike
 
@@ -109,6 +110,7 @@ class Inertia:
         ----------
         matrix : MatrixLike
             Matrix-like value, usually a `QuasiCartanMatrix`, whose inertia is computed.
+            When the value exposes symmetrized entries, those entries are used.
 
         Returns
         -------
@@ -116,7 +118,16 @@ class Inertia:
             Exact positive, negative, and zero eigenvalue counts.
         """
         size = matrix.dimension
-        values = [[Fraction(entry) for entry in row] for row in matrix.entries]
+        symmetrized = getattr(matrix, "symmetrized_entries", None)
+        entries = (
+            matrix.entries
+            if symmetrized is None
+            else cast(
+                tuple[tuple[int, ...], ...],
+                symmetrized,
+            )
+        )
+        values = [[Fraction(entry) for entry in row] for row in entries]
         positive = 0
         negative = 0
         zero = 0

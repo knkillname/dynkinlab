@@ -36,8 +36,8 @@ print(f"DynkinLab {dynkinlab.__version__}")
 
 ## Quasi-Cartan matrices
 
-Build a symmetric quasi-Cartan matrix, evaluate its integer quadratic form, and inspect its exact
-inertia:
+Build a quasi-Cartan matrix, evaluate its integer quadratic form, and inspect its exact inertia.
+Symmetric matrices are the special case where the symmetrizer is all ones:
 
 ```python
 from dynkinlab import QuasiCartanMatrix
@@ -48,33 +48,61 @@ inertia = matrix.inertia
 
 assert form.evaluate((1, 1)) == 1
 assert inertia.is_positive_definite
+assert matrix.symmetrizer == (1, 1)
+
+non_symmetric = QuasiCartanMatrix(((2, -1), (-2, 2)))
+assert non_symmetric.symmetrizer == (2, 1)
+assert non_symmetric.symmetrized_entries == ((4, -2), (-2, 2))
 print(f"dimension={matrix.dimension}, inertia={inertia}")
 ```
 
 The `A_2` Cartan matrix above has inertia `(2, 0, 0)`. The affine `A_2^(1)` matrix has inertia
 `(2, 0, 1)`, and indefinite forms have both positive and negative counts. Inertia is computed by
-exact rational congruence reduction.
+exact rational congruence reduction on `S = D A`.
 
-The current mathematical surface covers quasi-Cartan matrices, quadratic forms, and inertia, plus
-Colab-ready Markdown and HTML representations. Later changes add the bigraph, flation, and Dynkin
-classifier layers.
+## Bigraphs and Dynkin classification
+
+`Bigraph` is a label-generic view over `QuasiCartanMatrix`. It exposes flation and a verifiable
+classifier result:
+
+```python
+from dynkinlab import Bigraph, DynkinType
+
+matrix = DynkinType("B", 5).cartan_matrix()
+bigraph = Bigraph(matrix, ("a", "b", "c", "d", "e"))
+flated = bigraph.flation("a", "b")
+result = flated.classify()
+
+assert result.components[0].dynkin_type == DynkinType("B", 5)
+assert result.verify()
+print(result.to_markdown())
+```
+
+The classifier supports the full finite list A–G and returns a first-class flation witness, the
+normal form, exact inertia, and clear `NOT_ADMISSIBLE` / `NOT_POSITIVE_DEFINITE` outcomes. G2 is
+handled as a documented extension to the paper’s admissible class.
 
 ## Rich display in Colab
 
 `QuasiCartanMatrix` displays as an HTML table in Colab, while `QuadraticForm` and `Inertia` display
-as Markdown. The same strings are available without a notebook:
+as Markdown. `Bigraph` displays as inline SVG, and `DynkinType` / `DynkinClassification` display as
+Markdown. The same strings are available without a notebook:
 
 ```python
-from dynkinlab import QuasiCartanMatrix
+from dynkinlab import Bigraph, DynkinType, QuasiCartanMatrix
 from dynkinlab.display import DisplayOptions
 
-matrix = QuasiCartanMatrix(((2, -1), (-1, 2)))
+matrix = QuasiCartanMatrix(((2, -1), (-2, 2)))
 options = DisplayOptions(matrix_index_base=1)
+bigraph = Bigraph(matrix, ("a", "b"))
+result = DynkinType("A", 2).cartan_matrix().classify()
 
 print(matrix.to_markdown(options=options))
 print(matrix.to_html(options=options))
 print(matrix.quadratic_form.to_markdown(options=options))
 print(matrix.inertia.to_markdown())
+print(bigraph.to_html())
+print(result.to_markdown())
 ```
 
 Set notebook-wide defaults through the canonical options object:
@@ -84,6 +112,8 @@ import dynkinlab
 
 dynkinlab.display.options.matrix_index_base = 1
 dynkinlab.display.options.expanded_form_dimension_limit = 4
+dynkinlab.display.options.bigraph_layout_seed = 7
+dynkinlab.display.options.bigraph_show_multiplicity = False
 
 dynkinlab.display.options.reset()
 ```

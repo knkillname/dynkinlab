@@ -20,12 +20,30 @@ class TestPackage:
 
     def test_public_surface(self) -> None:
         assert dynkinlab.__all__ == [
+            "Bigraph",
+            "BigraphEdge",
+            "ClassificationStatus",
+            "ComponentClassification",
+            "DynkinClassification",
+            "DynkinType",
+            "EdgeStyle",
+            "FlationSequence",
+            "FlationStep",
             "Inertia",
             "QuadraticForm",
             "QuasiCartanMatrix",
             "__version__",
         ]
         assert set(dynkinlab.__all__) == {
+            "Bigraph",
+            "BigraphEdge",
+            "ClassificationStatus",
+            "ComponentClassification",
+            "DynkinClassification",
+            "DynkinType",
+            "EdgeStyle",
+            "FlationSequence",
+            "FlationStep",
             "Inertia",
             "QuadraticForm",
             "QuasiCartanMatrix",

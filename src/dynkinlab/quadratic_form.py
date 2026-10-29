@@ -5,6 +5,7 @@
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import cast
 
 from dynkinlab import display
 from dynkinlab.display import DisplayOptions
@@ -19,9 +20,18 @@ class QuadraticForm:
     ----------
     matrix : MatrixLike
         Matrix-like value, usually a `QuasiCartanMatrix`, whose quadratic form is evaluated.
+        When the value exposes symmetrized entries, those entries are used.
     """
 
     matrix: MatrixLike
+
+    @staticmethod
+    def _evaluation_entries(matrix: MatrixLike) -> tuple[tuple[int, ...], ...]:
+        """Return the entries used for evaluation, preferring symmetrized entries."""
+        symmetrized = getattr(matrix, "symmetrized_entries", None)
+        if symmetrized is None:
+            return matrix.entries
+        return cast(tuple[tuple[int, ...], ...], symmetrized)
 
     def evaluate(self, vector: Sequence[int]) -> int:
         """Evaluate the form at an integer vector.
@@ -34,7 +44,8 @@ class QuadraticForm:
         Returns
         -------
         int
-            The exact value ``sum(x_i**2) + sum(a_ij * x_i * x_j for i < j)``.
+            The exact value
+            ``sum(d_i * x_i**2) + sum(s_ij * x_i * x_j for i < j)``.
 
         Raises
         ------
@@ -55,8 +66,11 @@ class QuadraticForm:
             if isinstance(value, bool) or not isinstance(value, int):
                 raise ValueError("vector entries must be integers")
 
-        total = sum(value * value for value in values)
-        rows = self.matrix.entries
+        rows = self._evaluation_entries(self.matrix)
+        total = sum(
+            (rows[index][index] // 2) * values[index] * values[index]
+            for index in range(self.matrix.dimension)
+        )
         for row_index in range(self.matrix.dimension):
             for column_index in range(row_index + 1, self.matrix.dimension):
                 total += rows[row_index][column_index] * values[row_index] * values[column_index]
@@ -82,14 +96,20 @@ class QuadraticForm:
             the expanded polynomial.
         """
         settings = self._effective_options(options)
-        general = r"$$q(x) = \sum_i x_i^2 + \sum_{i<j} a_{ij} x_i x_j$$"
+        rows = self._evaluation_entries(self.matrix)
+        general = r"$$q(x) = \sum_i d_i x_i^2 + \sum_{i<j} s_{ij} x_i x_j$$"
         lines = ["**Quadratic form**", "", general]
 
         if self.matrix.dimension <= settings.expanded_form_dimension_limit:
-            expression = " + ".join(f"x_{index}^2" for index in range(self.matrix.dimension))
+            terms: list[str] = []
+            for index in range(self.matrix.dimension):
+                coefficient = rows[index][index] // 2
+                factor = "" if coefficient == 1 else f"{coefficient} "
+                terms.append(f"{factor}x_{index}^2")
+            expression = " + ".join(terms)
             for row_index in range(self.matrix.dimension):
                 for column_index in range(row_index + 1, self.matrix.dimension):
-                    coefficient = self.matrix.entries[row_index][column_index]
+                    coefficient = rows[row_index][column_index]
                     if coefficient == 0:
                         continue
                     sign = "+" if coefficient > 0 else "-"

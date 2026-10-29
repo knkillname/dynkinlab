@@ -6,10 +6,9 @@
 DynkinLab is a typed Python library for Dynkin diagrams, quivers, and bigraphs. It is designed to
 run in Google Colab as well as in a local Python 3.13+ environment.
 
-This repository currently provides the package foundation plus the first mathematical layer:
-symmetric quasi-Cartan matrices, exact integer quadratic forms, and exact inertia. The value objects
-render as Markdown or HTML in Colab. Bigraphs, flation, and Dynkin classification arrive in later
-changes.
+The current surface covers symmetrizable quasi-Cartan matrices, exact integer quadratic forms and
+inertia, label-generic mixed bigraphs, first-class flation witnesses, and the paper-faithful cubic
+Dynkin classifier. Value objects render as Markdown or HTML in Colab and Jupyter.
 
 ## Requirements
 
@@ -56,14 +55,41 @@ print(form.to_markdown(options=options))
 
 Every Python snippet in this README is executed by the test suite, so the example stays runnable.
 
+## Bigraphs and Dynkin classification
+
+`Bigraph` is a label-generic view over a `QuasiCartanMatrix`. Flation is delegated to the matrix,
+and `classify()` returns a verifiable `DynkinClassification` with a first-class flation witness:
+
+```python
+from dynkinlab import Bigraph, DynkinType
+
+matrix = DynkinType("B", 5).cartan_matrix()
+bigraph = Bigraph(matrix, ("a", "b", "c", "d", "e"))
+flated = bigraph.flation("a", "b")
+result = flated.classify()
+
+assert result.components[0].dynkin_type == DynkinType("B", 5)
+assert result.verify()
+print(result.to_markdown())
+```
+
+`Bigraph.to_markdown()` summarizes edges and arrows; `Bigraph.to_html()` and `_repr_html_` provide
+an inline SVG for Colab. `FlationStep` and `FlationSequence` expose the transformation sequence.
+
 ## Colab display
 
 Matrices render as HTML tables in Colab, while quadratic forms and inertia render as Markdown.
+Mixed bigraphs render as inline SVG, and Dynkin results render as Markdown.
 `dynkinlab.display.options` holds the notebook-wide defaults:
 
 ```text
 dynkinlab.display.options.matrix_index_base
 dynkinlab.display.options.expanded_form_dimension_limit
+dynkinlab.display.options.bigraph_layout_seed
+dynkinlab.display.options.bigraph_figure_size
+dynkinlab.display.options.bigraph_show_labels
+dynkinlab.display.options.bigraph_show_multiplicity
+dynkinlab.display.options.bigraph_arrow_style
 dynkinlab.display.options.reset()
 ```
 

@@ -306,4 +306,4 @@ class TestInertiaProperties:
         entries[row][column] += 1
 
         with pytest.raises(ValueError, match="symmetric"):
-            QuasiCartanMatrix(entries)
+            QuasiCartanMatrix.symmetric(entries)

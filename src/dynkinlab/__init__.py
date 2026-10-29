@@ -4,10 +4,32 @@
 """Public package surface for DynkinLab."""
 
 from dynkinlab import display as display
+from dynkinlab.bigraph import Bigraph, BigraphEdge, EdgeStyle
+from dynkinlab.dynkin import (
+    ClassificationStatus,
+    ComponentClassification,
+    DynkinClassification,
+    DynkinType,
+)
+from dynkinlab.flation import FlationSequence, FlationStep
 from dynkinlab.inertia import Inertia
 from dynkinlab.quadratic_form import QuadraticForm
 from dynkinlab.quasi_cartan import QuasiCartanMatrix
 
 __version__ = "0.0.1"
 
-__all__ = ["Inertia", "QuadraticForm", "QuasiCartanMatrix", "__version__"]
+__all__ = [
+    "Bigraph",
+    "BigraphEdge",
+    "ClassificationStatus",
+    "ComponentClassification",
+    "DynkinClassification",
+    "DynkinType",
+    "EdgeStyle",
+    "FlationSequence",
+    "FlationStep",
+    "Inertia",
+    "QuadraticForm",
+    "QuasiCartanMatrix",
+    "__version__",
+]

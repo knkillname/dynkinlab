@@ -102,11 +102,18 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
+"src/dynkinlab/bigraph.py" = ["PLC0415"]
+"src/dynkinlab/classifier.py" = ["PLR0911", "PLR0912", "PLR2004"]
+"src/dynkinlab/dynkin.py" = ["PLR0911", "PLR0912", "PLR2004"]
+"src/dynkinlab/quasi_cartan.py" = ["PLC0415"]
 "tests/**" = [
   "ANN",
   "ARG",
   "D",
   "PLR2004",
+  "PT011",
+  "PT018",
+  "RUF043",
 ]
 
 [tool.ruff.lint.pydocstyle]

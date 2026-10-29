@@ -8,9 +8,10 @@ Google Colab runtime: install it in a notebook cell and import the package, or i
 on Python 3.13 or newer.
 :::
 
-DynkinLab is being rebuilt as a Colab-first library. This bootstrap release establishes the
-installable package, the supported dependency floors, and the documentation and verification
-infrastructure. The mathematical API arrives in the next change.
+DynkinLab is a Colab-first library for symmetrizable quasi-Cartan matrices, exact forms and
+inertia, label-generic mixed bigraphs, flation witnesses, and the full finite Dynkin
+classification. The package installs on Python 3.13 or newer and renders value objects inline in
+Colab/Jupyter.
 
 ```{code-block} console
 pip install dynkinlab
