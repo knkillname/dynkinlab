@@ -75,7 +75,24 @@ print(non_symmetric.symmetrized_entries)  # ((4, -2), (-2, 2))
 
 `QuasiCartanMatrix.symmetric(entries)` is a strict factory that rejects non-symmetric matrices,
 while the general constructor accepts both symmetric and non-symmetric symmetrizable matrices.
-Invalid input raises `ValueError` during construction.
+Invalid input raises `ValueError` during construction. A valid matrix with no positive diagonal
+symmetrizer raises `NotSymmetrizableError`, a `ValueError` subclass carrying a verifiable
+`SymmetrizerCertificate`:
+
+```python
+from dynkinlab import NotSymmetrizableError, QuasiCartanMatrix
+
+entries = ((2, -1, -2), (-2, 2, -1), (-1, -2, 2))
+try:
+    QuasiCartanMatrix(entries)
+except NotSymmetrizableError as error:
+    print(error)
+    assert error.certificate.verify(entries)
+```
+
+The certificate names the obstruction: a zero entry on one side of an edge, opposite signs on an
+edge, or an inconsistent cycle of edge ratios. Use `certificate.kind` and `certificate.vertices` to
+inspect it programmatically.
 
 `matrix.flation(source, target)` applies the generalized flation and returns a new matrix. Equal
 source and target indices perform the sign inversion used by the classifier.

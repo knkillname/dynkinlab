@@ -12,6 +12,8 @@ schema: spec-driven
 context: |
   Never import or access underscore-prefixed private names, except the _repr_*
   hooks required by Colab/Jupyter. Mandatory Python dunder protocols are not private API.
+  Never use `from __future__` imports. The minimum supported version is Python 3.13,
+  so native language features are sufficient.
 
 # Per-artifact rules (optional)
 # Add custom rules for specific artifacts.

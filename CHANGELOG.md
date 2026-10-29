@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Non-symmetrizable `QuasiCartanMatrix` construction now raises `NotSymmetrizableError` carrying a
+  verifiable `SymmetrizerCertificate` for zero entries, opposite signs, or inconsistent cycles.
 - NumPy 2.1 or newer is now a declared runtime dependency, used for the classifier's bounded
   integer state.
 - The initial typed `dynkinlab` package skeleton, built with Hatchling and targeting Python 3.13.

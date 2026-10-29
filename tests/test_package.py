@@ -8,7 +8,14 @@ import importlib.metadata
 from pathlib import Path
 
 import dynkinlab
-from dynkinlab import Inertia, QuadraticForm, QuasiCartanMatrix
+from dynkinlab import (
+    Inertia,
+    NotSymmetrizableError,
+    QuadraticForm,
+    QuasiCartanMatrix,
+    SymmetrizerCertificate,
+    SymmetrizerObstruction,
+)
 
 
 class TestPackage:
@@ -30,8 +37,11 @@ class TestPackage:
             "FlationSequence",
             "FlationStep",
             "Inertia",
+            "NotSymmetrizableError",
             "QuadraticForm",
             "QuasiCartanMatrix",
+            "SymmetrizerCertificate",
+            "SymmetrizerObstruction",
             "__version__",
         ]
         assert set(dynkinlab.__all__) == {
@@ -45,8 +55,11 @@ class TestPackage:
             "FlationSequence",
             "FlationStep",
             "Inertia",
+            "NotSymmetrizableError",
             "QuadraticForm",
             "QuasiCartanMatrix",
+            "SymmetrizerCertificate",
+            "SymmetrizerObstruction",
             "__version__",
         }
 
@@ -65,6 +78,15 @@ class TestPackage:
         assert isinstance(matrix.inertia, Inertia)
         assert matrix.inertia == Inertia(2, 0, 0)
         assert Inertia.from_matrix(matrix) == Inertia(2, 0, 0)
+
+    def test_symmetrizer_certificate_types_are_importable(self) -> None:
+        certificate = SymmetrizerCertificate(
+            SymmetrizerObstruction.ZERO_ENTRY,
+            (0, 1),
+        )
+
+        assert issubclass(NotSymmetrizableError, ValueError)
+        assert certificate.kind is SymmetrizerObstruction.ZERO_ENTRY
 
     def test_installed_metadata_matches_package_version(self) -> None:
         assert importlib.metadata.version("dynkinlab") == dynkinlab.__version__

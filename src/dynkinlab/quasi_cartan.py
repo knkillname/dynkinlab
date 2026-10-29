@@ -40,9 +40,12 @@ class QuasiCartanMatrix:
 
     Raises
     ------
+    NotSymmetrizableError
+        If the input is a valid quasi-Cartan matrix but no positive diagonal
+        integer symmetrizer exists.
     ValueError
         If the input is empty, ragged, non-square, non-integer, has a diagonal
-        entry other than 2, or is not symmetrizable.
+        entry other than 2, or an invalid supplied symmetrizer is given.
     """
 
     entries: tuple[tuple[int, ...], ...]

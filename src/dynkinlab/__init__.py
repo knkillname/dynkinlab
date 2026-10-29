@@ -15,6 +15,11 @@ from dynkinlab.flation import FlationSequence, FlationStep
 from dynkinlab.inertia import Inertia
 from dynkinlab.quadratic_form import QuadraticForm
 from dynkinlab.quasi_cartan import QuasiCartanMatrix
+from dynkinlab.symmetrizer import (
+    NotSymmetrizableError,
+    SymmetrizerCertificate,
+    SymmetrizerObstruction,
+)
 
 __version__ = "0.0.1"
 
@@ -29,7 +34,10 @@ __all__ = [
     "FlationSequence",
     "FlationStep",
     "Inertia",
+    "NotSymmetrizableError",
     "QuadraticForm",
     "QuasiCartanMatrix",
+    "SymmetrizerCertificate",
+    "SymmetrizerObstruction",
     "__version__",
 ]

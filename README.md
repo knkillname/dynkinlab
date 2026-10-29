@@ -56,6 +56,25 @@ print(form.to_markdown(options=options))
 
 Every Python snippet in this README is executed by the test suite, so the example stays runnable.
 
+## Symmetrizability certificates
+
+A valid quasi-Cartan matrix with no positive diagonal symmetrizer raises `NotSymmetrizableError`.
+The exception carries a verifiable `SymmetrizerCertificate`:
+
+```python
+from dynkinlab import NotSymmetrizableError, QuasiCartanMatrix
+
+entries = ((2, -1, -2), (-2, 2, -1), (-1, -2, 2))
+try:
+    QuasiCartanMatrix(entries)
+except NotSymmetrizableError as error:
+    assert error.certificate.verify(entries)
+    print(error.certificate.kind)
+```
+
+The certificate reports a zero entry on one side of an edge, opposite signs on an edge, or an
+inconsistent cycle of edge ratios.
+
 ## Bigraphs and Dynkin classification
 
 `Bigraph` is a label-generic view over a `QuasiCartanMatrix`. Flation is delegated to the matrix,

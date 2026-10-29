@@ -4,11 +4,160 @@
 """Canonical positive diagonal symmetrizers for quasi-Cartan matrices."""
 
 from collections.abc import Iterable
+from dataclasses import dataclass
+from enum import StrEnum
 from fractions import Fraction
 from math import gcd, lcm
-from typing import cast
+from typing import Self, cast, override
 
 import networkx as nx
+
+_EDGE_SIZE = 2
+_MIN_CYCLE_SIZE = 3
+
+
+class SymmetrizerObstruction(StrEnum):
+    """The kind of obstruction preventing a positive diagonal symmetrizer."""
+
+    ZERO_ENTRY = "zero_entry"
+    OPPOSITE_SIGNS = "opposite_signs"
+    INCONSISTENT_CYCLE = "inconsistent_cycle"
+
+
+@dataclass(frozen=True)
+class SymmetrizerCertificate:
+    """A verifiable proof that no positive diagonal symmetrizer exists.
+
+    Parameters
+    ----------
+    kind : SymmetrizerObstruction
+        The obstruction kind.
+    vertices : tuple[int, ...]
+        The edge ``(i, j)`` for an edge obstruction, or the cycle vertices for
+        an inconsistent cycle.
+    """
+
+    kind: SymmetrizerObstruction
+    vertices: tuple[int, ...]
+
+    def verify(self, entries: tuple[tuple[int, ...], ...]) -> bool:
+        """Return whether this certificate is valid for the matrix.
+
+        Parameters
+        ----------
+        entries : tuple[tuple[int, ...], ...]
+            Square matrix rows.
+
+        Returns
+        -------
+        bool
+            True when the named obstruction holds.
+        """
+        size = len(entries)
+        if size == 0 or any(len(row) != size for row in entries):
+            return False
+        if not self.vertices or any(not 0 <= index < size for index in self.vertices):
+            return False
+
+        if self.kind in (
+            SymmetrizerObstruction.ZERO_ENTRY,
+            SymmetrizerObstruction.OPPOSITE_SIGNS,
+        ):
+            return self._verify_edge(entries)
+        if self.kind is SymmetrizerObstruction.INCONSISTENT_CYCLE:
+            return self._verify_cycle(entries)
+        return False
+
+    def _verify_edge(self, entries: tuple[tuple[int, ...], ...]) -> bool:
+        """Verify a zero-entry or opposite-sign edge certificate."""
+        if len(self.vertices) != _EDGE_SIZE:
+            return False
+        first, second = self.vertices
+        if self.kind is SymmetrizerObstruction.ZERO_ENTRY:
+            return entries[first][second] == 0 and entries[second][first] != 0
+        return entries[first][second] * entries[second][first] < 0
+
+    def _verify_cycle(self, entries: tuple[tuple[int, ...], ...]) -> bool:
+        """Verify an inconsistent-cycle certificate."""
+        cycle = self.vertices
+        if len(cycle) < _MIN_CYCLE_SIZE or len(set(cycle)) != len(cycle):
+            return False
+        product = Fraction(1)
+        for first, second in zip(cycle, cycle[1:] + cycle[:1], strict=True):
+            forward = entries[first][second]
+            backward = entries[second][first]
+            if forward == 0 or backward == 0 or forward * backward < 0:
+                return False
+            product *= Fraction(forward, backward)
+        return product != 1
+
+    def describe(self, entries: tuple[tuple[int, ...], ...]) -> str:
+        """Return a concise human-readable proof.
+
+        Parameters
+        ----------
+        entries : tuple[tuple[int, ...], ...]
+            Square matrix rows.
+
+        Returns
+        -------
+        str
+            The obstruction explanation.
+
+        Raises
+        ------
+        ValueError
+            If the certificate does not verify against ``entries``.
+        """
+        if not self.verify(entries):
+            raise ValueError("certificate does not verify against the supplied matrix")
+
+        if self.kind is SymmetrizerObstruction.ZERO_ENTRY:
+            first, second = self.vertices
+            return (
+                f"zero entry at edge ({first}, {second}): "
+                f"a[{first}][{second}] = 0 but a[{second}][{first}] = "
+                f"{entries[second][first]}"
+            )
+
+        if self.kind is SymmetrizerObstruction.OPPOSITE_SIGNS:
+            first, second = self.vertices
+            return (
+                f"opposite signs at edge ({first}, {second}): "
+                f"a[{first}][{second}] = {entries[first][second]} and "
+                f"a[{second}][{first}] = {entries[second][first]}"
+            )
+
+        product = Fraction(1)
+        for first, second in zip(
+            self.vertices,
+            self.vertices[1:] + self.vertices[:1],
+            strict=True,
+        ):
+            product *= Fraction(entries[first][second], entries[second][first])
+        cycle = " -> ".join(str(index) for index in self.vertices + self.vertices[:1])
+        return f"inconsistent cycle {cycle}: ratio product {product} != 1"
+
+
+class NotSymmetrizableError(ValueError):
+    """Raised when no positive diagonal integer symmetrizer exists.
+
+    Parameters
+    ----------
+    message : str
+        Human-readable explanation.
+    certificate : SymmetrizerCertificate
+        Verifiable obstruction witness.
+    """
+
+    def __init__(self, message: str, certificate: SymmetrizerCertificate) -> None:
+        super().__init__(message)
+        self.certificate = certificate
+
+    @override
+    def __reduce__(self) -> tuple[type[Self], tuple[str, SymmetrizerCertificate]]:
+        """Return the pickling recipe, including the certificate."""
+        return type(self), (str(self), self.certificate)
 
 
 class Symmetrizer:
@@ -37,7 +186,7 @@ class Symmetrizer:
 
         Raises
         ------
-        ValueError
+        NotSymmetrizableError
             If no positive diagonal integer symmetrizer exists.
         """
         size = len(entries)
@@ -141,9 +290,33 @@ class Symmetrizer:
         entries: tuple[tuple[int, ...], ...],
         component: tuple[int, ...],
     ) -> dict[int, int]:
-        """Return primitive integer ratios for one connected component."""
+        """Return primitive integer ratios for one connected component.
+
+        Parameters
+        ----------
+        entries : tuple[tuple[int, ...], ...]
+            Square matrix rows.
+        component : tuple[int, ...]
+            Sorted vertex indices of one connected component.
+
+        Returns
+        -------
+        dict[int, int]
+            Primitive positive integer values keyed by vertex index.
+
+        Raises
+        ------
+        NotSymmetrizableError
+            If the component has no positive diagonal integer symmetrizer.
+        """
+        # Correctness: a zero side forces the opposite d to 0; opposite signs cannot
+        # balance positive d; otherwise every edge fixes d_j/d_i = a_ij/a_ji > 0.
+        # A connected graph is consistent iff every fundamental cycle product is 1;
+        # clearing denominators and dividing by gcd yields the unique primitive solution.
         root = component[0]
         values: dict[int, Fraction] = {root: Fraction(1)}
+        parent: dict[int, int] = {root: root}
+        depth: dict[int, int] = {root: 0}
         queue = [root]
 
         while queue:
@@ -156,16 +329,36 @@ class Symmetrizer:
                 if forward == 0 and backward == 0:
                     continue
                 if forward == 0 or backward == 0:
-                    raise ValueError("matrix is not symmetrizable")
+                    # 0 = d_j*a_ji forces d_j = 0.
+                    first, second = (row, column) if forward == 0 else (column, row)
+                    certificate = SymmetrizerCertificate(
+                        SymmetrizerObstruction.ZERO_ENTRY,
+                        (first, second),
+                    )
+                    raise cls._failure(certificate, entries)
                 if forward * backward < 0:
-                    raise ValueError("matrix is not symmetrizable")
+                    # Positive d cannot balance opposite signs.
+                    first, second = sorted((row, column))
+                    certificate = SymmetrizerCertificate(
+                        SymmetrizerObstruction.OPPOSITE_SIGNS,
+                        (first, second),
+                    )
+                    raise cls._failure(certificate, entries)
 
                 candidate = values[row] * Fraction(forward, backward)
                 if column in values:
                     if values[column] != candidate:
-                        raise ValueError("matrix is not symmetrizable")
+                        # A positive solution forces every cycle product to 1.
+                        cycle = cls._fundamental_cycle(row, column, parent, depth)
+                        certificate = SymmetrizerCertificate(
+                            SymmetrizerObstruction.INCONSISTENT_CYCLE,
+                            cycle,
+                        )
+                        raise cls._failure(certificate, entries)
                     continue
                 values[column] = candidate
+                parent[column] = row
+                depth[column] = depth[row] + 1
                 queue.append(column)
 
         denominator = 1
@@ -179,6 +372,40 @@ class Symmetrizer:
         for value in integers.values():
             divisor = gcd(divisor, value)
         return {index: value // divisor for index, value in integers.items()}
+
+    @staticmethod
+    def _failure(
+        certificate: SymmetrizerCertificate,
+        entries: tuple[tuple[int, ...], ...],
+    ) -> NotSymmetrizableError:
+        """Build the exception carrying a verified certificate."""
+        return NotSymmetrizableError(
+            f"matrix is not symmetrizable: {certificate.describe(entries)}",
+            certificate,
+        )
+
+    @staticmethod
+    def _fundamental_cycle(
+        first: int,
+        second: int,
+        parent: dict[int, int],
+        depth: dict[int, int],
+    ) -> tuple[int, ...]:
+        """Return the simple cycle formed by the tree paths and the closing edge."""
+        left: list[int] = []
+        right: list[int] = []
+        while depth[first] > depth[second]:
+            left.append(first)
+            first = parent[first]
+        while depth[second] > depth[first]:
+            right.append(second)
+            second = parent[second]
+        while first != second:
+            left.append(first)
+            first = parent[first]
+            right.append(second)
+            second = parent[second]
+        return (*left, first, *right[::-1])
 
     @staticmethod
     def _is_symmetric(entries: tuple[tuple[int, ...], ...]) -> bool:
