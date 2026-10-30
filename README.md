@@ -105,6 +105,8 @@ Mixed bigraphs render as inline SVG, and Dynkin results render as Markdown.
 ```text
 dynkinlab.display.options.matrix_index_base
 dynkinlab.display.options.expanded_form_dimension_limit
+dynkinlab.display.options.bigraph_layout
+dynkinlab.display.options.bigraph_layout_iterations
 dynkinlab.display.options.bigraph_layout_seed
 dynkinlab.display.options.bigraph_figure_size
 dynkinlab.display.options.bigraph_show_labels

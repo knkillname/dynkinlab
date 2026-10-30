@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: MIT
 """Immutable quasi-Cartan matrices and their flation operation."""
 
-from collections.abc import Iterable
+import html
+from collections.abc import Hashable, Iterable
 from dataclasses import dataclass
 from typing import Any
 
@@ -158,6 +159,31 @@ class QuasiCartanMatrix:
         return self._is_symmetric_rows(self.entries)
 
     @property
+    def has_faithful_bigraph(self) -> bool:
+        """Return whether the matrix admits a faithful mixed bigraph.
+
+        A pair of opposite off-diagonal entries is faithful when both entries
+        vanish, when the entries are equal, or when the smaller magnitude is
+        one. Any other pair has no faithful edge or arrow representation.
+
+        Returns
+        -------
+        bool
+            True when every off-diagonal pair is faithful.
+        """
+        for row in range(self.dimension):
+            for column in range(row + 1, self.dimension):
+                forward = self.entries[row][column]
+                backward = self.entries[column][row]
+                if forward == backward:
+                    continue
+                if forward == 0 or backward == 0:
+                    return False
+                if min(abs(forward), abs(backward)) != 1:
+                    return False
+        return True
+
+    @property
     def symmetrized_entries(self) -> tuple[tuple[int, ...], ...]:
         """Return the symmetrized matrix ``S = D A``."""
         return tuple(
@@ -287,64 +313,130 @@ class QuasiCartanMatrix:
         """Return the explicit options or the canonical display options."""
         return display.options if options is None else options
 
-    def to_markdown(self, options: DisplayOptions | None = None) -> str:
+    @staticmethod
+    def _display_labels(
+        labels: Iterable[Hashable],
+        dimension: int,
+    ) -> tuple[Hashable, ...]:
+        """Validate and normalize display-only labels."""
+        try:
+            normalized = tuple(labels)
+        except TypeError as error:
+            raise ValueError("labels must be an iterable") from error
+        if len(normalized) != dimension:
+            raise ValueError(f"labels must have {dimension} entries, got {len(normalized)}")
+        for label in normalized:
+            try:
+                hash(label)
+            except TypeError as error:
+                raise ValueError("labels must be hashable") from error
+        if len(set(normalized)) != len(normalized):
+            raise ValueError("labels must be unique")
+        return normalized
+
+    @staticmethod
+    def _markdown_label(label: object) -> str:
+        """Escape one label for a Markdown table cell."""
+        return str(label).replace("|", r"\|")
+
+    def _headers(
+        self,
+        options: DisplayOptions | None,
+        labels: Iterable[Hashable] | None,
+    ) -> tuple[Hashable, ...]:
+        """Return explicit labels or the configured index headers."""
+        if labels is not None:
+            return self._display_labels(labels, self.dimension)
+        settings = self._effective_options(options)
+        return tuple(
+            range(
+                settings.matrix_index_base,
+                settings.matrix_index_base + self.dimension,
+            ),
+        )
+
+    def to_markdown(
+        self,
+        options: DisplayOptions | None = None,
+        *,
+        labels: Iterable[Hashable] | None = None,
+    ) -> str:
         """Render the matrix as a Markdown table.
 
         Parameters
         ----------
         options : DisplayOptions | None
             Per-call display options. The canonical options are used when omitted.
+        labels : Iterable[Hashable] | None
+            Optional display-only labels for the row and column headers.
 
         Returns
         -------
         str
-            Markdown table with row and column headers using the configured index base.
+            Markdown table with labeled or index-based headers.
+
+        Raises
+        ------
+        ValueError
+            If the labels do not match the dimension, are duplicated, or are
+            unhashable.
         """
-        settings = self._effective_options(options)
-        indices = tuple(
-            range(
-                settings.matrix_index_base,
-                settings.matrix_index_base + self.dimension,
-            ),
-        )
-        header = "|   | " + " | ".join(str(index) for index in indices) + " |"
-        separator = "|---|" + "|".join("---:" for _ in indices) + "|"
+        headers = self._headers(options, labels)
+        header = "|   | " + " | ".join(self._markdown_label(label) for label in headers) + " |"
+        separator = "|---|" + "|".join("---:" for _ in headers) + "|"
         rows = [
-            f"| {index} | " + " | ".join(str(value) for value in row) + " |"
-            for index, row in zip(indices, self.entries, strict=True)
+            f"| {self._markdown_label(label)} | " + " | ".join(str(value) for value in row) + " |"
+            for label, row in zip(headers, self.entries, strict=True)
         ]
         return "\n".join((header, separator, *rows))
 
-    def to_html(self, options: DisplayOptions | None = None) -> str:
+    def to_html(
+        self,
+        options: DisplayOptions | None = None,
+        *,
+        labels: Iterable[Hashable] | None = None,
+        collapse: bool = False,
+    ) -> str:
         """Render the matrix as an HTML table.
 
         Parameters
         ----------
         options : DisplayOptions | None
             Per-call display options. The canonical options are used when omitted.
+        labels : Iterable[Hashable] | None
+            Optional display-only labels for the row and column headers.
+        collapse : bool
+            Whether to wrap the table in a collapsed HTML disclosure.
 
         Returns
         -------
         str
-            HTML table with row and column headers using the configured index base.
+            HTML table, optionally inside a ``<details>`` disclosure.
+
+        Raises
+        ------
+        ValueError
+            If the labels do not match the dimension, are duplicated, or are
+            unhashable.
         """
-        settings = self._effective_options(options)
-        indices = tuple(
-            range(
-                settings.matrix_index_base,
-                settings.matrix_index_base + self.dimension,
-            ),
-        )
-        header_cells = "".join(f"<th>{index}</th>" for index in indices)
+        headers = self._headers(options, labels)
+        header_cells = "".join(f"<th>{html.escape(str(label))}</th>" for label in headers)
         rows = []
-        for index, row in zip(indices, self.entries, strict=True):
+        for label, row in zip(headers, self.entries, strict=True):
             body_cells = "".join(f"<td>{value}</td>" for value in row)
-            rows.append(f"<tr><th>{index}</th>{body_cells}</tr>")
-        return (
+            rows.append(f"<tr><th>{html.escape(str(label))}</th>{body_cells}</tr>")
+        table = (
             '<table class="dynkinlab-matrix">'
             f"<thead><tr><th></th>{header_cells}</tr></thead>"
             f"<tbody>{''.join(rows)}</tbody>"
             "</table>"
+        )
+        if not collapse:
+            return table
+        return (
+            '<details class="dynkinlab-matrix-disclosure">'
+            f"<summary>Matrix ({self.dimension} x {self.dimension})</summary>"
+            f"{table}</details>"
         )
 
     def _repr_html_(self) -> str:

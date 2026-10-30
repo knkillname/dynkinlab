@@ -56,9 +56,9 @@ assert non_symmetric.symmetrized_entries == ((4, -2), (-2, 2))
 print(f"dimension={matrix.dimension}, inertia={inertia}")
 ```
 
-The `A_2` Cartan matrix above has inertia `(2, 0, 0)`. The affine `A_2^(1)` matrix has inertia
-`(2, 0, 1)`, and indefinite forms have both positive and negative counts. Inertia is computed by
-exact rational congruence reduction on `S = D A`.
+The $A_2$ Cartan matrix above has inertia $(2, 0, 0)$. The affine $A_2^{(1)}$ matrix has inertia
+$(2, 0, 1)$, and indefinite forms have both positive and negative counts. Inertia is computed by
+exact rational congruence reduction on $S = DA$.
 
 ## Bigraphs and Dynkin classification
 
@@ -79,8 +79,8 @@ print(result.to_markdown())
 ```
 
 The classifier supports the full finite list A–G and returns a first-class flation witness, the
-normal form, exact inertia, and clear `NOT_ADMISSIBLE` / `NOT_POSITIVE_DEFINITE` outcomes. G2 is
-handled as a documented extension to the admissibility conditions.
+normal form, exact inertia, and clear `NOT_ADMISSIBLE` / `NOT_POSITIVE_DEFINITE` outcomes. $G_2$
+is handled as a documented extension to the admissibility conditions.
 
 ## Rich display in Colab
 
@@ -112,6 +112,7 @@ import dynkinlab
 
 dynkinlab.display.options.matrix_index_base = 1
 dynkinlab.display.options.expanded_form_dimension_limit = 4
+dynkinlab.display.options.bigraph_layout_iterations = 10000
 dynkinlab.display.options.bigraph_layout_seed = 7
 dynkinlab.display.options.bigraph_show_multiplicity = False
 
@@ -120,9 +121,10 @@ dynkinlab.display.options.reset()
 
 A per-call `DisplayOptions` object overrides the canonical settings for that call only.
 
-## Companion notebook
+## Masterclass notebook
 
-The [thesis companion notebook](https://github.com/knkillname/dynkinlab/blob/main/notebooks/thesis-companion.ipynb)
-is an executable, matrix-first paper covering flation, the A9 certificate, the D13 D-core gluing,
-and the A9-to-D8 cyclization. Its editable Python source and the Colab workflow are described in
-the [notebooks guide](https://github.com/knkillname/dynkinlab/blob/main/notebooks/README.md).
+The [DynkinLab masterclass](https://github.com/knkillname/dynkinlab/blob/main/notebooks/dynkin-masterclass.ipynb)
+is an executable, ground-up lesson covering quasi-Cartan matrices, exact inertia, faithful
+bigraphs, flation, the finite types, the A9 certificate, the D13 D-core gluing, and the A9-to-D8
+cyclization. Its editable Python source, parameter labs, and Colab workflow are described in the
+[notebooks guide](https://github.com/knkillname/dynkinlab/blob/main/notebooks/README.md).

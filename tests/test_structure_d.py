@@ -277,6 +277,18 @@ class TestDCoreGluing:
         with pytest.raises(ValueError, match="number of core edges"):
             _d13_core().gluing(_d13_pieces()[:4])
 
+    def test_markdown_lists_pieces_core_edges_and_a_types(self) -> None:
+        certificate = _d13_core().gluing(_d13_pieces(), labels=tuple(range(1, 14)))
+
+        markdown = certificate.to_markdown()
+
+        assert "`D_13`" in markdown
+        assert "| F1 | 1 .. 2 | {1, 2, 8} | `A_3` |" in markdown
+        assert "| F2 | 2 -- 3 | {2, 3, 6, 7} | `A_4` |" in markdown
+        assert "| F5 | 5 -- 1 | {1, 5} | `A_2` |" in markdown
+        assert certificate._repr_markdown_() == markdown
+        assert "<table" not in repr(certificate)
+
     def test_tampered_certificate_is_rejected(self) -> None:
         certificate = _d13_core().gluing(_d13_pieces(), labels=tuple(range(1, 14)))
 
@@ -347,6 +359,18 @@ class TestACyclization:
     def test_too_few_vertices_are_rejected(self) -> None:
         with pytest.raises(ValueError, match="five"):
             _solid_chain(4).a_cyclization(1, 4)
+
+    def test_markdown_reports_path_result_labels_and_type(self) -> None:
+        certificate = _a9_bigraph().a_cyclization(1, 6)
+
+        markdown = certificate.to_markdown()
+
+        assert "| identified | 1 = 6 |" in markdown
+        assert "| path | 1 -> 3 -> 5 -> 6 |" in markdown
+        assert "| result labels | {1, 2, 3, 4, 5, 7, 8, 9} |" in markdown
+        assert "| type | `D_8` |" in markdown
+        assert certificate._repr_markdown_() == markdown
+        assert "|" not in repr(certificate)
 
     def test_tampered_certificate_is_rejected(self) -> None:
         certificate = _a9_bigraph().a_cyclization(1, 6)

@@ -9,8 +9,124 @@ from dynkinlab import Bigraph, BigraphEdge, EdgeStyle, FlationSequence, FlationS
 from dynkinlab.quasi_cartan import QuasiCartanMatrix
 
 _A2 = QuasiCartanMatrix(((2, -1), (-1, 2)))
+_A3 = QuasiCartanMatrix(((2, -1, 0), (-1, 2, -1), (0, -1, 2)))
 _B2 = QuasiCartanMatrix(((2, -1), (-2, 2)))
 _DOTTED_A2 = QuasiCartanMatrix(((2, 1), (1, 2)))
+_A9_TEXT = """1--2..3--1
+3..4--5--3
+3--9--4
+5..9
+5..6..8..5
+4--7"""
+
+
+class TestPathNotation:
+    """Verify the compact path notation constructor."""
+
+    def test_a9_path_text_is_parsed(self) -> None:
+        bigraph = Bigraph.from_paths(_A9_TEXT, labels=tuple(range(1, 10)))
+
+        assert bigraph.labels == tuple(range(1, 10))
+        assert bigraph.matrix.entries[0][1] == -1
+        assert bigraph.matrix.entries[1][2] == 1
+        assert len(bigraph.edges) == 13
+        assert bigraph.a_type_certificate() is not None
+
+    def test_explicit_label_order_is_preserved(self) -> None:
+        bigraph = Bigraph.from_paths("b--a", labels=("a", "b"))
+
+        assert bigraph.labels == ("a", "b")
+        assert bigraph.matrix.entries == ((2, -1), (-1, 2))
+
+    def test_labels_outside_the_pinned_order_are_rejected(self) -> None:
+        with pytest.raises(ValueError, match="outside the explicit label order"):
+            Bigraph.from_paths("a--c", labels=("a", "b"))
+
+    def test_labels_are_inferred_in_first_appearance_order(self) -> None:
+        bigraph = Bigraph.from_paths("2--3--6..2\n6--7")
+
+        assert bigraph.labels == (2, 3, 6, 7)
+        assert bigraph.matrix.dimension == 4
+
+    def test_isolated_vertices_comments_and_separators(self) -> None:
+        bigraph = Bigraph.from_paths("solo\n1, --, 2  # a solid edge")
+
+        assert bigraph.labels == ("solo", 1, 2)
+        assert bigraph.matrix.entries == ((2, 0, 0), (0, 2, -1), (0, -1, 2))
+
+    @pytest.mark.parametrize(
+        ("labels", "match"),
+        [(("a", "a"), "unique"), ((["a"], ["b"]), "hashable")],
+    )
+    def test_invalid_explicit_labels_are_rejected(
+        self,
+        labels: object,
+        match: str,
+    ) -> None:
+        with pytest.raises(ValueError, match=match):
+            Bigraph.from_paths("a--b", labels=labels)  # type: ignore[arg-type]
+
+    def test_conflicting_declarations_are_rejected(self) -> None:
+        with pytest.raises(ValueError, match="conflicting declarations"):
+            Bigraph.from_paths("1--2\n1..2")
+
+    @pytest.mark.parametrize(
+        "text",
+        ["", "1--", "1--1", "1~~2"],
+    )
+    def test_empty_or_malformed_text_is_rejected(self, text: str) -> None:
+        with pytest.raises(ValueError):
+            Bigraph.from_paths(text)
+
+    @pytest.mark.parametrize("multiplicity", [0, -1, True, 1.5])
+    def test_invalid_arrow_multiplicity_is_rejected(self, multiplicity: object) -> None:
+        with pytest.raises(ValueError, match="arrow_multiplicity"):
+            Bigraph.from_paths("a->b", arrow_multiplicity=multiplicity)  # type: ignore[arg-type]
+
+    def test_arrow_multiplicity_is_configurable(self) -> None:
+        bigraph = Bigraph.from_paths("a->b", arrow_multiplicity=3)
+
+        assert bigraph.matrix.entries == ((2, -1), (-3, 2))
+        assert bigraph.matrix.has_faithful_bigraph is True
+        assert bigraph.edges == (BigraphEdge("a", "b", True, EdgeStyle.SOLID, 3),)
+
+
+class TestFaithfulPredicate:
+    """Verify the faithful-bigraph entry condition."""
+
+    def test_positive_definite_examples_are_faithful(self) -> None:
+        assert _A2.has_faithful_bigraph is True
+        assert _A3.has_faithful_bigraph is True
+
+    def test_two_over_four_is_not_faithful(self) -> None:
+        matrix = QuasiCartanMatrix(((2, 2), (4, 2)))
+
+        assert matrix.has_faithful_bigraph is False
+        bigraph = Bigraph(matrix, (1, 2))
+        with pytest.raises(ValueError, match="no faithful bigraph"):
+            tuple(bigraph.edges)
+
+    def test_unit_arrow_is_faithful(self) -> None:
+        matrix = QuasiCartanMatrix(((2, 1), (3, 2)))
+
+        assert matrix.has_faithful_bigraph is True
+        assert Bigraph(matrix, ("a", "b")).edges == (
+            BigraphEdge("a", "b", True, EdgeStyle.DOTTED, 3),
+        )
+
+    def test_symmetric_dotted_pair_is_faithful(self) -> None:
+        matrix = QuasiCartanMatrix(((2, 1), (1, 2)))
+
+        assert matrix.has_faithful_bigraph is True
+        assert Bigraph(matrix, ("a", "b")).edges == (
+            BigraphEdge("a", "b", False, EdgeStyle.DOTTED, 1),
+        )
+
+    def test_zero_pair_is_faithful(self) -> None:
+        matrix = QuasiCartanMatrix(((2, 0), (0, 2)))
+
+        assert matrix.has_faithful_bigraph is True
+        assert Bigraph(matrix).edges == ()
 
 
 class TestBigraphEdge:
@@ -180,3 +296,17 @@ class TestFlationSequence:
     def test_unhashable_step_label_is_rejected(self) -> None:
         with pytest.raises(ValueError, match="hashable"):
             FlationStep(["a"], "b")  # type: ignore[arg-type]
+
+    def test_markdown_lists_steps_in_application_order(self) -> None:
+        sequence = FlationSequence((FlationStep("a", "b"), FlationStep("b", "b")))
+
+        markdown = sequence.to_markdown()
+
+        assert "| 1 | a | b | flation |" in markdown
+        assert "| 2 | b | b | sign inversion |" in markdown
+        assert sequence._repr_markdown_() == markdown
+
+    def test_empty_sequence_markdown(self) -> None:
+        markdown = FlationSequence().to_markdown()
+
+        assert "| - | - | - | none |" in markdown

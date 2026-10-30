@@ -342,3 +342,28 @@ class TestATypeCertificate:
         assert d13.a_type_certificate() is None
         result = d13.classify()
         assert result.components[0].dynkin_type == DynkinType("D", 13)
+
+    def test_markdown_lists_blocks_partitions_and_articulation_points(self) -> None:
+        bigraph = _a9_bigraph()
+        certificate = bigraph.a_type_certificate()
+        assert certificate is not None
+
+        markdown = certificate.to_markdown()
+
+        assert "`A_9`" in markdown
+        assert "| C1 | B1 | {1, 2, 3} |" in markdown
+        assert "{3, 4, 5, 9}" in markdown
+        assert "{4, 7}" in markdown
+        assert "{5, 6, 8}" in markdown
+        assert "3, 4, 5" in markdown
+        assert certificate._repr_markdown_() == markdown
+        assert "<table" not in repr(certificate)
+
+    def test_single_vertex_markdown_has_no_blocks(self) -> None:
+        bigraph = DynkinType("A", 1).bigraph()
+        certificate = bigraph.a_type_certificate()
+        assert certificate is not None
+
+        markdown = certificate.to_markdown()
+
+        assert "No blocks" in markdown

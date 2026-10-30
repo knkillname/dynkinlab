@@ -3,14 +3,16 @@
 # SPDX-License-Identifier: MIT
 """Structural bigraph inspection: blocks, forests, and A-type certificates."""
 
-from collections.abc import Hashable, Iterable
+from collections.abc import Hashable, Iterable, Mapping
 from dataclasses import dataclass
 from itertools import combinations
 from typing import cast
 
 import networkx as nx
+from matplotlib.axes import Axes
 
 from dynkinlab.bigraph import Bigraph
+from dynkinlab.display import DisplayOptions
 from dynkinlab.dynkin import DynkinType
 from dynkinlab.quasi_cartan import QuasiCartanMatrix
 
@@ -43,6 +45,12 @@ def _induced_bigraph(bigraph: Bigraph, labels: tuple[Hashable, ...]) -> Bigraph:
         tuple(bigraph.matrix.entries[row][column] for column in indices) for row in indices
     )
     return Bigraph(QuasiCartanMatrix(rows), labels)
+
+
+def _markdown_labels(labels: Iterable[Hashable]) -> str:
+    """Format one label set for a Markdown table cell."""
+    values = ", ".join(str(label).replace("|", r"\|") for label in labels)
+    return "{" + values + "}"
 
 
 @dataclass(frozen=True)
@@ -129,6 +137,47 @@ class BlockCutTree:
             for label in block.labels:
                 graph.add_edge(block, label)
         return graph
+
+    def draw(
+        self,
+        *,
+        ax: Axes | None = None,
+        options: DisplayOptions | None = None,
+        title: str | None = None,
+        positions: Mapping[Hashable, tuple[float, float]] | None = None,
+    ) -> Axes:
+        """Draw the block-cut tree.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes | None
+            Existing axes. A new figure is created when omitted.
+        options : DisplayOptions | None
+            Per-call display options. The canonical options are used when omitted.
+        title : str | None
+            Optional axes title.
+        positions : Mapping[Hashable, tuple[float, float]] | None
+            Coordinates from the original graph. When supplied, articulation
+            points keep their positions and each block is placed at the
+            centroid of its vertices. Otherwise the tree uses a NetworkX
+            bipartite layout.
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            The axes containing the drawing.
+        """
+        from dynkinlab.bigraph_display import BlockCutTreeRenderer  # noqa: PLC0415
+        from dynkinlab.display import options as canonical_options  # noqa: PLC0415
+
+        settings = canonical_options if options is None else options
+        return BlockCutTreeRenderer.draw(
+            self,
+            ax=ax,
+            options=settings,
+            title=title,
+            positions=positions,
+        )
 
     def verify(self, bigraph: Bigraph) -> bool:
         """Return whether this tree matches the bigraph's block-cut structure."""
@@ -414,6 +463,53 @@ class ATypeCertificate:
             if overlap:
                 raise ValueError("component certificates must have disjoint labels")
             labels |= set(component.labels)
+
+    def to_markdown(self) -> str:
+        """Render the A-type certificate as Markdown.
+
+        Returns
+        -------
+        str
+            Component summary, one row per block with both partition sides,
+            and the articulation points.
+        """
+        lines = [
+            "**A-type certificate**",
+            "",
+            "| component | type | labels | articulation points |",
+            "|---|---|---|---|",
+        ]
+        for index, component in enumerate(self.components, start=1):
+            articulation = ", ".join(
+                str(label).replace("|", r"\|") for label in component.tree.articulation_points
+            )
+            lines.append(
+                f"| C{index} | `{component.dynkin_type.name}` "
+                f"| {_markdown_labels(component.labels)} "
+                f"| {articulation or 'none'} |",
+            )
+
+        lines.extend(("", "**Blocks**", ""))
+        if not any(component.tree.blocks for component in self.components):
+            lines.append("No blocks: every component is a single vertex.")
+            return "\n".join(lines)
+        lines.extend(("| component | block | labels | X | Y |", "|---|---|---|---|---|"))
+        for component_index, component in enumerate(self.components, start=1):
+            for block_index, (block, partition) in enumerate(
+                zip(component.tree.blocks, component.partitions, strict=True),
+                start=1,
+            ):
+                lines.append(
+                    f"| C{component_index} | B{block_index} "
+                    f"| {_markdown_labels(block.labels)} "
+                    f"| {_markdown_labels(partition.x)} "
+                    f"| {_markdown_labels(partition.y)} |",
+                )
+        return "\n".join(lines)
+
+    def _repr_markdown_(self) -> str:
+        """Return the canonical Markdown representation for notebook display."""
+        return self.to_markdown()
 
     def verify(self, bigraph: Bigraph) -> bool:
         """Return whether every component certificate matches the bigraph."""

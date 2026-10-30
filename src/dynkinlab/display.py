@@ -7,6 +7,48 @@ from dataclasses import dataclass
 from typing import override
 
 _FIGURE_SIZE_LENGTH = 2
+_BIGRAPH_LAYOUTS = frozenset({"auto", "planar", "kamada_kawai", "spring", "circular"})
+_INTEGER_FIELDS = frozenset(
+    {
+        "expanded_form_dimension_limit",
+        "matrix_index_base",
+        "bigraph_layout_seed",
+        "bigraph_layout_iterations",
+    },
+)
+_POSITIVE_INTEGER_FIELDS = frozenset({"bigraph_layout_iterations"})
+
+
+def _validate_integer(name: str, value: object) -> None:
+    """Validate an integer display setting."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ValueError(f"{name} must be an integer")
+    if name in _POSITIVE_INTEGER_FIELDS:
+        if value <= 0:
+            raise ValueError(f"{name} must be positive")
+    elif value < 0:
+        raise ValueError(f"{name} must be non-negative")
+
+
+def _validate_figure_size(name: str, value: object) -> tuple[float, float]:
+    """Validate and normalize a figure-size pair."""
+    if not isinstance(value, (tuple, list)) or len(value) != _FIGURE_SIZE_LENGTH:
+        raise ValueError(f"{name} must be a pair of positive numbers")
+    width, height = value
+    if any(
+        isinstance(item, bool) or not isinstance(item, (int, float)) for item in (width, height)
+    ):
+        raise ValueError(f"{name} must be a pair of positive numbers")
+    if width <= 0 or height <= 0:
+        raise ValueError(f"{name} must be a pair of positive numbers")
+    return (float(width), float(height))
+
+
+def _validate_choice(name: str, value: object) -> None:
+    """Validate a string-valued choice setting."""
+    allowed = _BIGRAPH_LAYOUTS if name == "bigraph_layout" else {"arrow", "line"}
+    if not isinstance(value, str) or value not in allowed:
+        raise ValueError(f"{name} must be one of {sorted(allowed)}")
 
 
 @dataclass
@@ -19,6 +61,11 @@ class DisplayOptions:
         Largest form dimension for which the expanded polynomial is shown.
     matrix_index_base : int
         First index used for matrix row and column headers.
+    bigraph_layout : str
+        Layout policy: ``"auto"``, ``"planar"``, ``"kamada_kawai"``,
+        ``"spring"``, or ``"circular"``.
+    bigraph_layout_iterations : int
+        Iteration count for the spring layout.
     bigraph_layout_seed : int
         Seed for deterministic bigraph layout.
     bigraph_figure_size : tuple[float, float]
@@ -33,6 +80,8 @@ class DisplayOptions:
 
     expanded_form_dimension_limit: int = 3
     matrix_index_base: int = 0
+    bigraph_layout: str = "auto"
+    bigraph_layout_iterations: int = 10000
     bigraph_layout_seed: int = 0
     bigraph_figure_size: tuple[float, float] = (4.0, 4.0)
     bigraph_show_labels: bool = True
@@ -42,33 +91,17 @@ class DisplayOptions:
     @override
     def __setattr__(self, name: str, value: object) -> None:
         """Validate display settings when they are assigned."""
-        if name in {
-            "expanded_form_dimension_limit",
-            "matrix_index_base",
-            "bigraph_layout_seed",
-        }:
-            if isinstance(value, bool) or not isinstance(value, int):
-                raise ValueError(f"{name} must be an integer")
-            if value < 0:
-                raise ValueError(f"{name} must be non-negative")
+        if name in _INTEGER_FIELDS:
+            _validate_integer(name, value)
         elif name == "bigraph_figure_size":
-            if not isinstance(value, (tuple, list)) or len(value) != _FIGURE_SIZE_LENGTH:
-                raise ValueError(f"{name} must be a pair of positive numbers")
-            width, height = value
-            if any(
-                isinstance(item, bool) or not isinstance(item, (int, float))
-                for item in (width, height)
-            ):
-                raise ValueError(f"{name} must be a pair of positive numbers")
-            if width <= 0 or height <= 0:
-                raise ValueError(f"{name} must be a pair of positive numbers")
-            value = (float(width), float(height))
-        elif name in {"bigraph_show_labels", "bigraph_show_multiplicity"}:
-            if not isinstance(value, bool):
-                raise ValueError(f"{name} must be a boolean")
-        elif name == "bigraph_arrow_style":
-            if value not in {"arrow", "line"}:
-                raise ValueError(f"{name} must be 'arrow' or 'line'")
+            value = _validate_figure_size(name, value)
+        elif name in {"bigraph_layout", "bigraph_arrow_style"}:
+            _validate_choice(name, value)
+        elif name in {"bigraph_show_labels", "bigraph_show_multiplicity"} and not isinstance(
+            value,
+            bool,
+        ):
+            raise ValueError(f"{name} must be a boolean")
         super().__setattr__(name, value)
 
     def reset(self) -> None:
@@ -77,6 +110,8 @@ class DisplayOptions:
         for name in (
             "expanded_form_dimension_limit",
             "matrix_index_base",
+            "bigraph_layout",
+            "bigraph_layout_iterations",
             "bigraph_layout_seed",
             "bigraph_figure_size",
             "bigraph_show_labels",

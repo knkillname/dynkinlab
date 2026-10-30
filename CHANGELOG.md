@@ -9,9 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- A script-first thesis companion notebook (`notebooks/thesis-companion.py` plus the generated
-  Colab notebook) with matrix-first A/D certificates, deterministic figures, a boundary table, and
-  a latest-version git install that tracks the project's default branch.
+- A script-first DynkinLab masterclass (`notebooks/dynkin-masterclass.py` plus the generated Colab
+  notebook) that teaches quasi-Cartan matrices, exact inertia, faithful bigraphs, flation, finite
+  types, A9, D13, and A9-to-D8 from first principles with a fixed tour and parameter labs.
+- `Bigraph.from_paths` for the six-operator path notation, including explicit label order, isolated
+  vertices, comments, conflict detection, and configurable arrow multiplicity.
+- `QuasiCartanMatrix.has_faithful_bigraph` and display-only `labels` on `to_markdown`/`to_html`,
+  with optional collapsed HTML for wide matrices.
+- `Bigraph.layout`, `Bigraph.draw`, and `BlockCutTree.draw`, driven by NetworkX layouts, plus the
+  `DisplayOptions.bigraph_layout` policy. `Bigraph.to_html` now shares the same layout engine.
+- Markdown summaries and notebook hooks for A-type, D-core gluing, and A-cyclization certificates,
+  and for flation sequences.
 - A VS Code Dev Container based on the latest Google Colab CPU runtime, with Python/Jupyter
   extensions, a notebook-ready Hatch environment, and OpenCode.
 - Non-symmetrizable `QuasiCartanMatrix` construction now raises `NotSymmetrizableError` carrying a
@@ -39,6 +47,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- The automatic bigraph layout now prefers Kamada-Kawai for connected graphs when SciPy is
+  available and otherwise falls back to an unweighted, energy-based spring layout with a configurable
+  iteration count, defaulting to 10000 iterations. Planar graphs with a four-vertex clique use a
+  planar seed followed by the same spring refinement, avoiding the crossing diagonals that
+  force-directed layouts often produce for a K4 block. Planar layout remains available as an
+  explicit policy.
+- **Breaking:** `Bigraph.edges` now raises `ValueError` when the underlying matrix has no faithful
+  bigraph representation, including the `2/4` matrix. Previously it returned a lossy
+  multiplicity-four arrow. The classifier is unaffected because it reads entries directly.
+- The thesis-companion notebook was replaced by the ground-up masterclass notebook under
+  `notebooks/`; the old files and the `thesis-notebook` capability were retired.
 - Admissible indefinite components are now rejected by exact inertia with reason `indefinite`, zero
   flation steps, and an empty witness. Non-negative components keep the bounded flation behavior.
 - `SymmetrizedMatrix` was removed from `dynkinlab.matrix`; `MatrixLike` remains the read-only

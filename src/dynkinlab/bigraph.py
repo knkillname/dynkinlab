@@ -4,16 +4,112 @@
 """Label-generic mixed bigraphs over quasi-Cartan matrices."""
 
 import html
-from collections.abc import Hashable, Iterable
+import re
+from collections.abc import Hashable, Iterable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 
 import networkx as nx
+from matplotlib.axes import Axes
 
 import dynkinlab
 from dynkinlab import display
 from dynkinlab.display import DisplayOptions
 from dynkinlab.quasi_cartan import QuasiCartanMatrix
+
+_PATH_TOKEN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*|\d+|--|\.\.|->|<-|\.>|<.")
+_PATH_OPERATORS = frozenset({"--", "..", "->", "<-", ".>", "<."})
+_PATH_STEP = 2
+
+
+def _path_tokens(line: str, line_number: int) -> list[str]:
+    """Tokenize one non-empty path line and reject malformed spacing."""
+    tokens: list[str] = []
+    position = 0
+    for match in _PATH_TOKEN.finditer(line):
+        if line[position : match.start()].strip(" \t,"):
+            raise ValueError(f"line {line_number}: invalid token in path {line!r}")
+        tokens.append(match.group())
+        position = match.end()
+    if line[position:].strip(" \t,"):
+        raise ValueError(f"line {line_number}: invalid token in path {line!r}")
+    if not tokens or len(tokens) % _PATH_STEP == 0:
+        raise ValueError(f"line {line_number}: invalid path {line!r}")
+    return tokens
+
+
+def _path_values(
+    operator: str,
+    current: Hashable,
+    following: Hashable,
+    arrow_multiplicity: int,
+) -> dict[tuple[Hashable, Hashable], int]:
+    """Return the two matrix entries declared by one path operator."""
+    if operator not in _PATH_OPERATORS:
+        raise ValueError(f"unknown edge operator {operator!r}")
+    if operator == "--":
+        return {(current, following): -1, (following, current): -1}
+    if operator == "..":
+        return {(current, following): 1, (following, current): 1}
+    if operator == "->":
+        return {(current, following): -1, (following, current): -arrow_multiplicity}
+    if operator == "<-":
+        return {(current, following): -arrow_multiplicity, (following, current): -1}
+    if operator == ".>":
+        return {(current, following): 1, (following, current): arrow_multiplicity}
+    return {(current, following): arrow_multiplicity, (following, current): 1}
+
+
+def _pinned_labels(labels: Iterable[Hashable] | None) -> tuple[Hashable, ...] | None:
+    """Validate an explicit path label order."""
+    if labels is None:
+        return None
+    try:
+        pinned = tuple(labels)
+    except TypeError as error:
+        raise ValueError("labels must be an iterable") from error
+    for label in pinned:
+        try:
+            hash(label)
+        except TypeError as error:
+            raise ValueError("labels must be hashable") from error
+    if len(set(pinned)) != len(pinned):
+        raise ValueError("labels must be unique")
+    return pinned
+
+
+def _path_label(
+    token: str,
+    pinned: tuple[Hashable, ...] | None,
+    order: list[Hashable],
+    line_number: int,
+) -> Hashable:
+    """Convert a token to a label and register it in first-appearance order."""
+    label: Hashable = int(token) if token.isdigit() else token
+    if pinned is not None and label not in pinned:
+        raise ValueError(
+            f"line {line_number}: label {label!r} is outside the explicit label order",
+        )
+    if label not in order:
+        order.append(label)
+    return label
+
+
+def _declare_pair(
+    declared: dict[frozenset[Hashable], dict[tuple[Hashable, Hashable], int]],
+    values: dict[tuple[Hashable, Hashable], int],
+    current: Hashable,
+    following: Hashable,
+    line_number: int,
+) -> None:
+    """Store one pair declaration and reject an inconsistent repeat."""
+    pair = frozenset((current, following))
+    previous = declared.get(pair)
+    if previous is not None and previous != values:
+        raise ValueError(
+            f"line {line_number}: conflicting declarations for {current!r} and {following!r}",
+        )
+    declared[pair] = values
 
 
 class EdgeStyle(StrEnum):
@@ -131,18 +227,113 @@ class Bigraph:
         """Return the number of vertices."""
         return self.matrix.dimension
 
+    @classmethod
+    def from_paths(
+        cls,
+        text: str,
+        labels: Iterable[Hashable] | None = None,
+        *,
+        arrow_multiplicity: int = 2,
+    ) -> "Bigraph":
+        """Construct a labeled bigraph from DynkinLab path notation.
+
+        Each line is a path of vertices joined by ``--``, ``..``, ``->``,
+        ``<-``, ``.>``, or ``<.``. Whitespace and commas separate tokens,
+        ``#`` starts a comment, and a line with one vertex declares an
+        isolated label. Labels default to first appearance unless an explicit
+        order is supplied.
+
+        Parameters
+        ----------
+        text : str
+            Path-notation source.
+        labels : Iterable[Hashable] | None
+            Optional explicit label order. Path labels outside this order are
+            rejected.
+        arrow_multiplicity : int
+            Reverse magnitude assigned to every arrow operator. The default
+            is 2.
+
+        Returns
+        -------
+        Bigraph
+            The labeled bigraph built from the parsed matrix.
+
+        Raises
+        ------
+        ValueError
+            If the text is malformed, a pair is declared inconsistently, a
+            path label is outside the explicit order, or the multiplicity is
+            not a positive integer.
+        """
+        if not isinstance(text, str):
+            raise ValueError("text must be a string")
+        if isinstance(arrow_multiplicity, bool) or not isinstance(arrow_multiplicity, int):
+            raise ValueError("arrow_multiplicity must be a positive integer")
+        if arrow_multiplicity <= 0:
+            raise ValueError("arrow_multiplicity must be a positive integer")
+        pinned = _pinned_labels(labels)
+
+        order: list[Hashable] = []
+        declared: dict[frozenset[Hashable], dict[tuple[Hashable, Hashable], int]] = {}
+        for line_number, raw_line in enumerate(text.splitlines(), start=1):
+            line = raw_line.split("#", 1)[0].strip()
+            if not line:
+                continue
+            tokens = _path_tokens(line, line_number)
+
+            current = _path_label(tokens[0], pinned, order, line_number)
+            for token_index in range(1, len(tokens), _PATH_STEP):
+                operator = tokens[token_index]
+                following = _path_label(tokens[token_index + 1], pinned, order, line_number)
+                if current == following:
+                    raise ValueError(f"line {line_number}: an edge requires distinct endpoints")
+                try:
+                    values = _path_values(
+                        operator,
+                        current,
+                        following,
+                        arrow_multiplicity,
+                    )
+                except ValueError as error:
+                    raise ValueError(f"line {line_number}: {error}") from error
+                _declare_pair(declared, values, current, following, line_number)
+                current = following
+
+        matrix_labels = tuple(order) if pinned is None else pinned
+        if not matrix_labels:
+            raise ValueError(
+                "path text must declare at least one vertex when labels are not pinned",
+            )
+
+        index = {label: position for position, label in enumerate(matrix_labels)}
+        size = len(matrix_labels)
+        rows = [[2 if row == column else 0 for column in range(size)] for row in range(size)]
+        for values in declared.values():
+            for (source, target), value in values.items():
+                rows[index[source]][index[target]] = value
+        return cls(QuasiCartanMatrix(rows), matrix_labels)
+
     @property
     def edges(self) -> tuple[BigraphEdge, ...]:
-        """Return the derived edges and arrows in matrix-index order."""
+        """Return the derived edges and arrows in matrix-index order.
+
+        Raises
+        ------
+        ValueError
+            If the underlying matrix has no faithful bigraph representation.
+        """
+        if not self.matrix.has_faithful_bigraph:
+            raise ValueError("matrix has no faithful bigraph representation")
         entries = self.matrix.entries
         edges: list[BigraphEdge] = []
         for row in range(self.dimension):
             for column in range(row + 1, self.dimension):
                 forward = entries[row][column]
                 backward = entries[column][row]
-                if forward == 0 and backward == 0:
-                    continue
                 if forward == backward:
+                    if forward == 0:
+                        continue
                     style = EdgeStyle.DOTTED if forward > 0 else EdgeStyle.SOLID
                     edges.append(
                         BigraphEdge(
@@ -154,18 +345,14 @@ class Bigraph:
                         ),
                     )
                     continue
-                if forward == 0 or backward == 0:
-                    raise ValueError("matrix is not representable as a bigraph")
                 if abs(forward) < abs(backward):
                     source, target = row, column
                     weight = forward
                     multiplicity = abs(backward)
-                elif abs(forward) > abs(backward):
+                else:
                     source, target = column, row
                     weight = backward
                     multiplicity = abs(forward)
-                else:
-                    raise ValueError("matrix is not representable as a bigraph")
                 style = EdgeStyle.DOTTED if weight > 0 else EdgeStyle.SOLID
                 edges.append(
                     BigraphEdge(
@@ -221,6 +408,122 @@ class Bigraph:
         from dynkinlab.structure import build_block_cut_forest
 
         return build_block_cut_forest(self)
+
+    def layout(
+        self,
+        layout: str | None = None,
+        *,
+        seed: int | None = None,
+        iterations: int | None = None,
+        options: DisplayOptions | None = None,
+    ) -> dict[Hashable, tuple[float, float]]:
+        """Compute vertex coordinates with a NetworkX layout.
+
+        Parameters
+        ----------
+        layout : str | None
+            Layout policy. When omitted, the effective display options choose
+            ``"auto"`` or the configured policy.
+        seed : int | None
+            Layout seed. When omitted, the effective display options supply it.
+        iterations : int | None
+            Spring iteration count. When omitted, the effective display options
+            supply it.
+        options : DisplayOptions | None
+            Per-call display options. The canonical options are used when omitted.
+
+        Returns
+        -------
+        dict[Hashable, tuple[float, float]]
+            One coordinate pair for every vertex label.
+
+        Raises
+        ------
+        ValueError
+            If the layout policy is unknown, the matrix has no faithful
+            bigraph, or the explicit planar policy receives a non-planar graph.
+        """
+        from dynkinlab.bigraph_display import compute_layout
+
+        settings = self._effective_options(options)
+        selected_layout = settings.bigraph_layout if layout is None else layout
+        selected_seed = settings.bigraph_layout_seed if seed is None else seed
+        selected_iterations = (
+            settings.bigraph_layout_iterations if iterations is None else iterations
+        )
+        return compute_layout(
+            self,
+            selected_layout,
+            selected_seed,
+            selected_iterations,
+        )
+
+    def draw(
+        self,
+        *,
+        ax: Axes | None = None,
+        layout: str | None = None,
+        seed: int | None = None,
+        iterations: int | None = None,
+        positions: Mapping[Hashable, tuple[float, float]] | None = None,
+        options: DisplayOptions | None = None,
+        title: str | None = None,
+        highlight_edges: Iterable[frozenset[Hashable]] = (),
+        highlight_nodes: Iterable[Hashable] = (),
+        display_labels: Mapping[Hashable, str] | None = None,
+    ) -> Axes:
+        """Draw the bigraph on a matplotlib axes.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes | None
+            Existing axes. A new figure is created when omitted.
+        layout : str | None
+            Layout policy. When omitted, the effective display options choose it.
+        seed : int | None
+            Layout seed. When omitted, the effective display options supply it.
+        iterations : int | None
+            Spring iteration count. When omitted, the effective display options
+            supply it.
+        positions : Mapping[Hashable, tuple[float, float]] | None
+            Computed coordinates to reuse. When supplied, no layout is recomputed.
+        options : DisplayOptions | None
+            Per-call display options. The canonical options are used when omitted.
+        title : str | None
+            Optional axes title.
+        highlight_edges : Iterable[frozenset[Hashable]]
+            Undirected endpoint pairs to draw with the highlight style.
+        highlight_nodes : Iterable[Hashable]
+            Vertex labels to draw with the highlight style.
+        display_labels : Mapping[Hashable, str] | None
+            Optional text replacing the raw vertex labels.
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            The axes containing the drawing.
+
+        Raises
+        ------
+        ValueError
+            If the matrix has no faithful bigraph or a position is missing.
+        """
+        from dynkinlab.bigraph_display import BigraphRenderer
+
+        settings = self._effective_options(options)
+        return BigraphRenderer.draw(
+            self,
+            ax=ax,
+            layout=layout,
+            seed=seed,
+            iterations=iterations,
+            positions=positions,
+            options=settings,
+            title=title,
+            highlight_edges=highlight_edges,
+            highlight_nodes=highlight_nodes,
+            display_labels=display_labels,
+        )
 
     def is_a_block(
         self,

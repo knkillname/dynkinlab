@@ -30,6 +30,9 @@ notebook-wide defaults for rich representations:
 - `matrix_index_base` — first index used for matrix row and column headers. The default is `0`.
 - `expanded_form_dimension_limit` — largest form dimension for which a quadratic form is expanded
   in Markdown. The default is `3`.
+- `bigraph_layout` — layout policy: `"auto"`, `"planar"`, `"kamada_kawai"`, `"spring"`, or
+  `"circular"`. The default is `"auto"`. `kamada_kawai` requires SciPy.
+- `bigraph_layout_iterations` — spring-layout iteration count. The default is `10000`.
 - `bigraph_layout_seed` — deterministic layout seed. The default is `0`.
 - `bigraph_figure_size` — positive `(width, height)` pair. The default is `(4.0, 4.0)`.
 - `bigraph_show_labels` — whether vertex labels are drawn. The default is `True`.
@@ -41,6 +44,8 @@ import dynkinlab
 
 dynkinlab.display.options.matrix_index_base = 1
 dynkinlab.display.options.expanded_form_dimension_limit = 4
+dynkinlab.display.options.bigraph_layout = "spring"
+dynkinlab.display.options.bigraph_layout_iterations = 10000
 dynkinlab.display.options.bigraph_layout_seed = 7
 dynkinlab.display.options.bigraph_show_multiplicity = False
 
@@ -62,7 +67,7 @@ options = DisplayOptions(matrix_index_base=0)
 `QuasiCartanMatrix(entries)` copies and validates a square matrix of integers. The matrix must be
 non-empty, square, and have 2 on every diagonal entry. It must also be symmetrizable: there must be
 a positive diagonal integer symmetrizer `D` such that `D A` is symmetric. Symmetric matrices are the
-special case `D = (1, ..., 1)`.
+special case $D = (1,\dots,1)$.
 
 ```python
 from dynkinlab import QuasiCartanMatrix
@@ -109,6 +114,27 @@ matrix = QuasiCartanMatrix(((2, 1), (1, 2)))
 print(matrix.flation(0, 1).entries)  # ((2, -1), (-1, 2))
 ```
 
+`matrix.has_faithful_bigraph` reports whether every off-diagonal pair is zero, symmetric, or an
+arrow with one side of magnitude one. The predicate agrees with edge derivation: requesting the
+edges of a non-faithful view raises `ValueError` instead of inventing a lossy arrow.
+
+```python
+from dynkinlab import Bigraph, QuasiCartanMatrix
+
+a2 = QuasiCartanMatrix(((2, -1), (-1, 2)))
+assert a2.has_faithful_bigraph
+assert len(Bigraph(a2, ("a", "b")).edges) == 1
+
+not_faithful = QuasiCartanMatrix(((2, 2), (4, 2)))
+assert not not_faithful.has_faithful_bigraph
+try:
+    Bigraph(not_faithful, (1, 2)).edges
+except ValueError:
+    pass
+else:
+    raise AssertionError("a non-faithful matrix must not produce edges")
+```
+
 ## Matrix display
 
 `matrix.to_markdown()` returns a Markdown table and `matrix.to_html()` returns an HTML table. Both
@@ -116,18 +142,23 @@ use `dynkinlab.display.options.matrix_index_base` for row and column headers unl
 `DisplayOptions` object is supplied. In Colab, the object's `_repr_html_` hook displays the HTML
 table automatically.
 
+The optional `labels` argument supplies display-only headers for the rows and columns. Labels must
+match the dimension, be unique, and be hashable; they do not change matrix equality or hashing. The
+HTML renderer also accepts `collapse=True` to wrap a wide table in a collapsed disclosure.
+
 ```python
 from dynkinlab import QuasiCartanMatrix
 
 matrix = QuasiCartanMatrix(((2, -1), (-1, 2)))
-print(matrix.to_markdown())
-print(matrix.to_html())
+print(matrix.to_markdown(labels=("a", "b")))
+print(matrix.to_html(labels=("a", "b")))
+print(matrix.to_html(labels=("a", "b"), collapse=True))
 ```
 
 ## QuadraticForm
 
-`matrix.quadratic_form` returns a `QuadraticForm`. For a matrix with symmetrizer `D = diag(d_i)`
-and `S = D A`, its `evaluate(vector)` method computes
+`matrix.quadratic_form` returns a `QuadraticForm`. For a matrix with symmetrizer
+$D = \operatorname{diag}(d_i)$ and $S = DA$, its `evaluate(vector)` method computes
 
 ```text
 q(x) = sum(d_i * x_i**2) + sum(s_ij * x_i * x_j for i < j)
@@ -164,7 +195,7 @@ print(form.to_markdown())
 ## Inertia
 
 `matrix.inertia` and `Inertia.from_matrix(matrix)` compute the exact inertia of the symmetrized
-matrix `S = D A`. The result exposes `positive`, `negative`, and `zero` counts, plus `rank`,
+matrix $S = DA$. The result exposes `positive`, `negative`, and `zero` counts, plus `rank`,
 `signature`, `is_positive_definite`, `is_negative_definite`, and `is_degenerate`.
 
 ```python
@@ -187,10 +218,39 @@ and signature, followed by a definiteness or degeneracy label. In Colab, `Inerti
 
 ## Bigraph and flation
 
+`Bigraph.from_paths(text, labels=None, *, arrow_multiplicity=2)` builds a labeled bigraph from the
+DynkinLab path notation. Each line is a path, `#` starts a comment, and whitespace or commas separate
+tokens. A line with one vertex declares an isolated label. The six operators are:
+
+| operator | entries |
+|---|---|
+| `--` | `-1, -1` |
+| `..` | `+1, +1` |
+| `->` | `-1, -m` |
+| `<-` | `-m, -1` |
+| `.>` | `+1, +m` |
+| `<.` | `+m, +1` |
+
+$m$ is the `arrow_multiplicity`. Explicit labels pin matrix order and reject path labels outside the
+order; conflicting declarations of the same pair raise `ValueError`.
+
+```python
+from dynkinlab import Bigraph
+
+a3 = Bigraph.from_paths("1--2--3")
+print(a3.labels)  # (1, 2, 3)
+print(a3.matrix.entries)
+
+pinned = Bigraph.from_paths("b--a", labels=("a", "b"))
+print(pinned.labels)  # ('a', 'b')
+```
+
 `Bigraph(matrix, labels=None)` is a label-generic view over a `QuasiCartanMatrix`. It derives
 undirected edges for equal entries and arrows for unequal magnitudes. The signed weight follows the
 library's convention: the direction points from the smaller magnitude to the larger, and the style is
-solid for a negative weight and dotted for a positive one.
+solid for a negative weight and dotted for a positive one. The matrix must pass
+`has_faithful_bigraph`; otherwise `Bigraph.edges` raises `ValueError` rather than emitting a lossy
+multiplicity arrow.
 
 ```python
 from dynkinlab import Bigraph, FlationSequence, FlationStep, QuasiCartanMatrix
@@ -208,7 +268,8 @@ assert sequence.inverse().apply(final) == bigraph
 
 `Bigraph.flation(source, target)` delegates to the underlying matrix and returns a new bigraph with
 the same labels. `FlationStep` and `FlationSequence` are first-class witnesses; a step with equal
-source and target is the sign inversion used by the classifier.
+source and target is the sign inversion used by the classifier. `FlationSequence.to_markdown()` lists
+the steps in application order and labels equal endpoints as a sign inversion.
 
 ## Bigraph display
 
@@ -223,6 +284,44 @@ from dynkinlab import Bigraph, QuasiCartanMatrix
 bigraph = Bigraph(QuasiCartanMatrix(((2, -1), (-2, 2))), ("a", "b"))
 print(bigraph.to_markdown())
 print(bigraph.to_html())
+```
+
+`Bigraph.layout(layout=None, *, seed=None, iterations=None, options=None)` returns a coordinate
+mapping for every label. The policy comes from the `layout` argument, or from
+`dynkinlab.display.options.bigraph_layout` when omitted. `"auto"` prefers Kamada-Kawai for connected
+graphs when SciPy is available and otherwise uses an unweighted, energy-based `nx.spring_layout`
+with the configured iteration count. Layout distances ignore the signed solid/dotted edge weights.
+A planar graph containing a four-vertex clique starts from `nx.planar_layout` and is
+refined by the energy-based spring layout, which avoids the crossing diagonals that force-directed
+layouts often give a $K_4$. The named policies are `"planar"`, `"kamada_kawai"`, `"spring"`, and
+`"circular"`; `"kamada_kawai"` requires SciPy. An unknown policy raises `ValueError`, and
+`"planar"` on a non-planar graph propagates the NetworkX error rather than silently switching
+policies.
+
+```python
+from dynkinlab import Bigraph
+
+bigraph = Bigraph.from_paths("1--2--3")
+positions = bigraph.layout("circular")
+assert set(positions) == set(bigraph.labels)
+assert bigraph.layout("spring", seed=7, iterations=10000) == bigraph.layout(
+    "spring", seed=7, iterations=10000
+)
+```
+
+`Bigraph.draw(*, ax=None, layout=None, seed=None, iterations=None, positions=None,
+options=None, title=None, highlight_edges=(), highlight_nodes=(),
+display_labels=None)` renders the bigraph on a matplotlib axes and returns it. It preserves solid and dotted styles, arrow direction, multiplicity, and labels;
+optional highlights and display labels are supported. Supplying `positions` reuses a computed
+mapping. The method does not import IPython.
+
+```python
+from dynkinlab import Bigraph
+
+bigraph = Bigraph.from_paths("1--2--3")
+positions = bigraph.layout()
+axes = bigraph.draw(positions=positions, title="A3")
+assert axes.figure is not None
 ```
 
 ## Edge multisets
@@ -308,6 +407,26 @@ assert tree.verify(bigraph)
 print(tree.articulation_points)
 ```
 
+`BlockCutTree.draw(*, ax=None, options=None, title=None, positions=None)` renders the tree on a
+matplotlib axes. Block nodes are squares, vertex nodes are circles, articulation points are
+highlighted, and every block shows its label set. By default the tree uses
+`nx.bipartite_layout`. When `positions` supplies coordinates from the original graph, articulation
+points keep those coordinates, non-cut vertices are removed, and each block node is placed at the
+centroid of its block's vertices. The method returns the axes.
+
+```python
+from dynkinlab import Bigraph
+
+bigraph = Bigraph.from_paths("1--2--3")
+tree = bigraph.block_cut_forest().trees[0]
+axes = tree.draw(title="A3 block-cut tree")
+assert axes.figure is not None
+
+positions = bigraph.layout()
+axes = tree.draw(positions=positions, title="A3 tree at graph coordinates")
+assert axes.figure is not None
+```
+
 `Bigraph.is_a_block(labels)` returns an `ABlockPartition` when the induced vertex set is an A-block,
 and `None` otherwise. The two sides X and Y are disjoint: every cross pair is solid and every pair
 within a side is dotted. A block with no solid edges is accepted with X equal to all labels and Y
@@ -321,8 +440,8 @@ print(partition.x, partition.y)
 
 `Bigraph.a_type_certificate()` returns an `ATypeCertificate` when every connected component is
 A-type, and `None` otherwise. The certificate contains one `ATypeComponentCertificate` per
-component, with the component's `A_n` type, block-cut tree, and A-block partitions. For the 9-vertex
-A-block tree, the certificate has one `A_9` component and four block partitions:
+component, with the component's $A_n$ type, block-cut tree, and A-block partitions. For the 9-vertex
+A-block tree, the certificate has one $A_9$ component and four block partitions:
 
 ```python
 from dynkinlab import Bigraph, QuasiCartanMatrix
@@ -345,8 +464,12 @@ print([component.dynkin_type.name for component in certificate.components])
 print([block.labels for block in a9.block_cut_forest().trees[0].blocks])
 ```
 
+`ATypeCertificate.to_markdown()` renders the component types, one row per block with both partition
+sides, and the articulation points. `_repr_markdown_` returns the same string for notebook display;
+`repr()` stays dataclass-style.
+
 `Bigraph.is_type_a()` is the boolean convenience. The certificate is structural: it does not change
-`Bigraph.classify()`, so the 13-vertex D-core example still classifies as `D_13` while its A-type
+`Bigraph.classify()`, so the 13-vertex D-core example still classifies as $D_{13}$ while its A-type
 certificate is absent.
 
 ## D-core cycles
@@ -393,9 +516,10 @@ assert certificate.verify()
 assert certificate.dynkin_type.name == "D_4"
 ```
 
-The certificate exposes `core`, `pieces`, `gluing`, `dynkin_type`, and `verify()`. The D13 example
-uses the five pieces A3, A4, A2, A7, and A2 along the odd five-cycle and produces the 13-vertex
-D13 bigraph.
+The certificate exposes `core`, `pieces`, `gluing`, `dynkin_type`, and `verify()`.
+`DCoreGluingCertificate.to_markdown()` lists the type, core order, and one row per piece with its core
+edge, vertex labels, and A-type. The D13 example uses the five pieces A3, A4, A2, A7, and A2 along the
+odd five-cycle and produces the 13-vertex D13 bigraph.
 
 ### A-cyclization
 
@@ -425,13 +549,15 @@ assert certificate.verify()
 assert certificate.dynkin_type.name == "D_4"
 ```
 
-The thesis's A9 example uses internal vertices 1 and 6 along the path 1-3-5-6 to produce D8.
+`ACyclizationCertificate.to_markdown()` reports the source labels, identified endpoints, shortest
+path, result labels, and Dynkin type. The A9 example uses internal vertices 1 and 6 along the path
+`1-3-5-6` to produce D8.
 
 ## Dynkin types
 
 `DynkinType(family, rank)` represents a finite Cartan-Killing type. The supported families and
-ranks are `A_n` for `n >= 1`, `B_n` for `n >= 2`, `C_n` for `n >= 3`, `D_n` for `n >= 4`,
-`E_6`, `E_7`, `E_8`, `F_4`, and `G_2`.
+ranks are $A_n$ for $n \ge 1$, $B_n$ for $n \ge 2$, $C_n$ for $n \ge 3$, $D_n$ for $n \ge 4$,
+$E_6$, $E_7$, $E_8$, $F_4$, and $G_2$.
 
 ```python
 from dynkinlab import Bigraph, DynkinType
@@ -454,7 +580,7 @@ The classifier works on connected components of the nonzero off-diagonal graph.
 
 **Admissibility.** A component is admissible when every off-diagonal entry has magnitude at most 2,
 each nonzero pair is symmetrizable with consistent signs, and no pair has both magnitudes greater
-than 1. The 2-by-2 `G_2` matrix is the documented exception: its magnitude-3 entries bypass the
+than 1. The $2 \times 2$ $G_2$ matrix is the documented exception: its magnitude-3 entries bypass the
 admissibility filter and are classified directly.
 
 **Flation search.** A flation is the integer row/column operation that replaces one row and column

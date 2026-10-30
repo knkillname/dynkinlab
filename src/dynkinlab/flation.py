@@ -86,6 +86,35 @@ class FlationSequence:
         """Return the number of steps."""
         return len(self.steps)
 
+    def to_markdown(self) -> str:
+        """Render the sequence as a Markdown step table.
+
+        Returns
+        -------
+        str
+            One row per step in application order, with equal endpoints
+            identified as a sign inversion.
+        """
+        lines = [
+            "**Flation sequence**",
+            "",
+            "| step | source | target | kind |",
+            "|---:|---|---|---|",
+        ]
+        if not self.steps:
+            lines.append("| - | - | - | none |")
+            return "\n".join(lines)
+        for index, step in enumerate(self.steps, start=1):
+            source = str(step.source).replace("|", r"\|")
+            target = str(step.target).replace("|", r"\|")
+            kind = "sign inversion" if step.source == step.target else "flation"
+            lines.append(f"| {index} | {source} | {target} | {kind} |")
+        return "\n".join(lines)
+
+    def _repr_markdown_(self) -> str:
+        """Return the canonical Markdown representation for notebook display."""
+        return self.to_markdown()
+
     def apply(self, bigraph: Bigraph) -> Bigraph:
         """Replay the sequence on a bigraph.
 

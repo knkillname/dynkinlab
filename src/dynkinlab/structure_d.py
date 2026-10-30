@@ -19,6 +19,17 @@ _MIN_A_CYCLIZATION_SIZE = 5
 _MIN_PATH_LENGTH = 2
 
 
+def _markdown_labels(labels: Iterable[Hashable]) -> str:
+    """Format one label set for a Markdown table cell."""
+    values = ", ".join(str(label).replace("|", r"\|") for label in labels)
+    return "{" + values + "}"
+
+
+def _markdown_path(labels: Iterable[Hashable]) -> str:
+    """Format a path for a Markdown table cell."""
+    return " -> ".join(str(label).replace("|", r"\|") for label in labels)
+
+
 @dataclass(frozen=True)
 class DCore:
     """A cyclic D-core represented as an edge multiset.
@@ -316,6 +327,56 @@ class DCoreGluingCertificate:
             raise ValueError("certificate type must be D_n for its gluing")
         object.__setattr__(self, "pieces", pieces)
 
+    def _core_edge_text(self, index: int) -> str:
+        """Format the core edge paired with one piece."""
+        size = len(self.core.labels)
+        first = self.core.labels[index]
+        second = self.core.labels[(index + 1) % size]
+        pair = frozenset((first, second))
+        matches = [
+            edge for edge in self.core.edges.edges if frozenset((edge.source, edge.target)) == pair
+        ]
+        parts = [
+            f"{first} {'..' if edge.style is EdgeStyle.DOTTED else '--'} {second}"
+            for edge in matches
+        ]
+        return " / ".join(parts)
+
+    def to_markdown(self) -> str:
+        """Render the D-core gluing certificate as Markdown.
+
+        Returns
+        -------
+        str
+            Type, core order, one row per piece, core edge, labels, and A-type.
+        """
+        core_order = ", ".join(str(label).replace("|", r"\|") for label in self.core.labels)
+        lines = [
+            "**D-core gluing certificate**",
+            "",
+            f"**Type:** `{self.dynkin_type.name}`  **Core:** ({core_order})",
+            "",
+            "| piece | core edge | labels | A-type |",
+            "|---|---|---|---|",
+        ]
+        for index, piece in enumerate(self.pieces, start=1):
+            try:
+                certificate = piece.a_type_certificate()
+            except ValueError:
+                certificate = None
+            piece_type = (
+                "none" if certificate is None else f"`{certificate.components[0].dynkin_type.name}`"
+            )
+            lines.append(
+                f"| F{index} | {self._core_edge_text(index - 1)} "
+                f"| {_markdown_labels(piece.labels)} | {piece_type} |",
+            )
+        return "\n".join(lines)
+
+    def _repr_markdown_(self) -> str:
+        """Return the canonical Markdown representation for notebook display."""
+        return self.to_markdown()
+
     def verify(self) -> bool:
         """Return whether the certificate recomputes to the stored construction."""
         try:
@@ -386,6 +447,31 @@ class ACyclizationCertificate:
         if self.dynkin_type.family != "D" or self.dynkin_type.rank != self.result.dimension:
             raise ValueError("certificate type must be D_(n-1) for its result")
         object.__setattr__(self, "path", path)
+
+    def to_markdown(self) -> str:
+        """Render the A-cyclization certificate as Markdown.
+
+        Returns
+        -------
+        str
+            Source, identified endpoints, shortest path, result labels, and type.
+        """
+        lines = [
+            "**A-cyclization certificate**",
+            "",
+            "| property | value |",
+            "|---|---|",
+            f"| source | {_markdown_labels(self.source.labels)} |",
+            f"| identified | {self.x} = {self.y} |",
+            f"| path | {_markdown_path(self.path)} |",
+            f"| result labels | {_markdown_labels(self.result.labels)} |",
+            f"| type | `{self.dynkin_type.name}` |",
+        ]
+        return "\n".join(lines)
+
+    def _repr_markdown_(self) -> str:
+        """Return the canonical Markdown representation for notebook display."""
+        return self.to_markdown()
 
     def verify(self) -> bool:
         """Return whether the certificate recomputes to the stored construction."""

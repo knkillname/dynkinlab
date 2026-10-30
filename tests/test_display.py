@@ -18,6 +18,8 @@ class TestDisplayOptions:
 
         assert display_options.expanded_form_dimension_limit == 3
         assert display_options.matrix_index_base == 0
+        assert display_options.bigraph_layout == "auto"
+        assert display_options.bigraph_layout_iterations == 10000
         assert display_options.bigraph_layout_seed == 0
         assert display_options.bigraph_figure_size == (4.0, 4.0)
         assert display_options.bigraph_show_labels is True
@@ -35,6 +37,8 @@ class TestDisplayOptions:
 
         display_options.expanded_form_dimension_limit = 5
         display_options.matrix_index_base = 1
+        display_options.bigraph_layout = "kamada_kawai"
+        display_options.bigraph_layout_iterations = 500
         display_options.bigraph_layout_seed = 7
         display_options.bigraph_figure_size = (5, 3)
         display_options.bigraph_show_labels = False
@@ -43,6 +47,8 @@ class TestDisplayOptions:
 
         assert display_options.expanded_form_dimension_limit == 5
         assert display_options.matrix_index_base == 1
+        assert display_options.bigraph_layout == "kamada_kawai"
+        assert display_options.bigraph_layout_iterations == 500
         assert display_options.bigraph_layout_seed == 7
         assert display_options.bigraph_figure_size == (5.0, 3.0)
         assert not display_options.bigraph_show_labels
@@ -61,6 +67,8 @@ class TestDisplayOptions:
         display_options = DisplayOptions(
             expanded_form_dimension_limit=5,
             matrix_index_base=1,
+            bigraph_layout="circular",
+            bigraph_layout_iterations=500,
             bigraph_layout_seed=7,
             bigraph_figure_size=(5, 3),
             bigraph_show_labels=False,
@@ -72,6 +80,8 @@ class TestDisplayOptions:
 
         assert display_options.expanded_form_dimension_limit == 3
         assert display_options.matrix_index_base == 0
+        assert display_options.bigraph_layout == "auto"
+        assert display_options.bigraph_layout_iterations == 10000
         assert display_options.bigraph_layout_seed == 0
         assert display_options.bigraph_figure_size == (4.0, 4.0)
         assert display_options.bigraph_show_labels is True
@@ -83,6 +93,13 @@ class TestDisplayOptions:
         [
             ("bigraph_layout_seed", -1),
             ("bigraph_layout_seed", True),
+            ("bigraph_layout", "spiral"),
+            ("bigraph_layout", None),
+            ("bigraph_layout_iterations", 0),
+            ("bigraph_layout_iterations", -1),
+            ("bigraph_layout_iterations", True),
+            ("bigraph_layout_iterations", 1.5),
+            ("bigraph_arrow_style", ["arrow"]),
             ("bigraph_figure_size", (0, 4)),
             ("bigraph_figure_size", (4,)),
             ("bigraph_figure_size", ("4", 4)),
@@ -146,6 +163,72 @@ class TestMatrixDisplay:
 
         assert "<th>1</th>" in html
         assert "<th>2</th>" in html
+
+
+class TestLabeledMatrixDisplay:
+    """Verify display-only labels and collapsed HTML output."""
+
+    def test_html_table_uses_labels(self) -> None:
+        matrix = QuasiCartanMatrix(((2, -1), (-1, 2)))
+
+        html = matrix.to_html(labels=("a", "b"))
+
+        assert "<th>a</th><th>b</th>" in html
+        assert "<tr><th>a</th><td>2</td><td>-1</td></tr>" in html
+        assert "<tr><th>b</th><td>-1</td><td>2</td></tr>" in html
+
+    def test_markdown_table_uses_labels(self) -> None:
+        matrix = QuasiCartanMatrix(((2, -1), (-1, 2)))
+
+        markdown = matrix.to_markdown(labels=("a", "b"))
+
+        assert "|   | a | b |" in markdown
+        assert "| a | 2 | -1 |" in markdown
+        assert "| b | -1 | 2 |" in markdown
+
+    def test_non_contiguous_labels_are_preserved(self) -> None:
+        matrix = DynkinType("D", 8).cartan_matrix()
+        labels = (1, 2, 3, 4, 5, 7, 8, 9)
+
+        markdown = matrix.to_markdown(labels=labels)
+
+        assert "|   | 1 | 2 | 3 | 4 | 5 | 7 | 8 | 9 |" in markdown
+
+    @pytest.mark.parametrize(
+        "labels",
+        [("a",), ("a", "a"), ("a", ["b"])],
+    )
+    def test_invalid_labels_are_rejected(self, labels: tuple[object, ...]) -> None:
+        matrix = QuasiCartanMatrix(((2, -1), (-1, 2)))
+
+        with pytest.raises(ValueError, match="labels"):
+            matrix.to_markdown(labels=labels)  # type: ignore[arg-type]
+        with pytest.raises(ValueError, match="labels"):
+            matrix.to_html(labels=labels)  # type: ignore[arg-type]
+
+    def test_labels_are_escaped(self) -> None:
+        matrix = QuasiCartanMatrix(((2, -1), (-1, 2)))
+
+        markdown = matrix.to_markdown(labels=("a|b", "<c>"))
+        html = matrix.to_html(labels=("a|b", "<c>"))
+
+        assert r"a\|b" in markdown
+        assert "&lt;c&gt;" in html
+
+    def test_collapsed_html_names_the_dimension(self) -> None:
+        matrix = QuasiCartanMatrix(((2, -1), (-1, 2)))
+
+        html = matrix.to_html(collapse=True)
+
+        assert "<details" in html
+        assert "<summary>Matrix (2 x 2)</summary>" in html
+        assert '<table class="dynkinlab-matrix">' in html
+
+    def test_default_html_stays_expanded(self) -> None:
+        matrix = QuasiCartanMatrix(((2, -1), (-1, 2)))
+
+        assert "<details" not in matrix.to_html()
+        assert "<details" not in matrix._repr_html_()
 
 
 class TestQuadraticFormDisplay:
