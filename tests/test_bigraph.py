@@ -32,6 +32,41 @@ class TestPathNotation:
         assert len(bigraph.edges) == 13
         assert bigraph.a_type_certificate() is not None
 
+    def test_multiple_path_blocks_are_joined(self) -> None:
+        separate = Bigraph.from_paths(
+            "1--2..3--1",
+            "3..4--5--3",
+            "3--9--4",
+            "5..9",
+            "5..6..8..5",
+            "4--7",
+            labels=tuple(range(1, 10)),
+        )
+        combined = Bigraph.from_paths(_A9_TEXT, labels=tuple(range(1, 10)))
+
+        assert separate.labels == combined.labels
+        assert separate.matrix.entries == combined.matrix.entries
+        assert separate.edges == combined.edges
+
+    def test_empty_paths_with_pinned_labels_form_an_edgeless_graph(self) -> None:
+        bigraph = Bigraph.from_paths(labels=("a", "b"))
+
+        assert bigraph.labels == ("a", "b")
+        assert bigraph.matrix.entries == ((2, 0), (0, 2))
+        assert bigraph.edges == ()
+
+    def test_labels_are_keyword_only(self) -> None:
+        with pytest.raises(ValueError, match="path arguments must be strings"):
+            Bigraph.from_paths("1--2", (1, 2))  # type: ignore[arg-type]
+
+    def test_non_string_path_arguments_are_rejected(self) -> None:
+        with pytest.raises(ValueError, match="path arguments must be strings"):
+            Bigraph.from_paths("1--2", 3)  # type: ignore[arg-type]
+
+    def test_line_numbers_span_path_arguments(self) -> None:
+        with pytest.raises(ValueError, match="line 2"):
+            Bigraph.from_paths("1--2", "1..2")
+
     def test_explicit_label_order_is_preserved(self) -> None:
         bigraph = Bigraph.from_paths("b--a", labels=("a", "b"))
 

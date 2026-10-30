@@ -27,15 +27,31 @@ The system SHALL construct an immutable `Bigraph` view over a `QuasiCartanMatrix
 
 ### Requirement: Path notation construction
 
-The system SHALL provide `Bigraph.from_paths(text, labels=None, *, arrow_multiplicity=2)` to
-construct a labeled bigraph from the six-operator path notation. It SHALL accept integer and
-identifier labels, comments, whitespace or comma separators, isolated vertices, and explicit label
-order; conflicting declarations and labels outside a pinned order SHALL raise `ValueError`.
+The system SHALL provide `Bigraph.from_paths(*paths, labels=None, arrow_multiplicity=2)` to
+construct a labeled bigraph from one or more path-notation blocks joined with newlines. It SHALL
+accept the existing label, comment, separator, isolated-vertex, and explicit-order forms; `labels`
+and `arrow_multiplicity` SHALL be keyword-only. Conflicts, non-string arguments, and out-of-order
+labels SHALL raise `ValueError`.
 
 #### Scenario: A9 path text is parsed
 
 - **WHEN** the A9 path text and labels `1..9` are passed to `from_paths`
 - **THEN** the resulting bigraph has the expected matrix and labels in first-appearance order
+
+#### Scenario: Multiple path arguments are joined
+
+- **WHEN** the same path blocks are passed as separate arguments or as one newline-separated string
+- **THEN** both calls produce the same labels and matrix
+
+#### Scenario: Labels are keyword-only
+
+- **WHEN** a label sequence is passed as a positional path argument
+- **THEN** construction fails with `ValueError` instead of treating the sequence as a path block
+
+#### Scenario: Non-string path arguments are rejected
+
+- **WHEN** a path argument is not a string
+- **THEN** construction fails with `ValueError`
 
 #### Scenario: Explicit label order is preserved
 
@@ -54,7 +70,7 @@ order; conflicting declarations and labels outside a pinned order SHALL raise `V
 
 #### Scenario: Invalid path text is rejected
 
-- **WHEN** the text is empty without pinned labels or has a malformed path
+- **WHEN** the path arguments are empty without pinned labels or contain a malformed path
 - **THEN** construction fails with `ValueError`
 
 ### Requirement: Mixed edge and arrow derivation

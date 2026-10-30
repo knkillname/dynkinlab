@@ -218,9 +218,11 @@ and signature, followed by a definiteness or degeneracy label. In Colab, `Inerti
 
 ## Bigraph and flation
 
-`Bigraph.from_paths(text, labels=None, *, arrow_multiplicity=2)` builds a labeled bigraph from the
-DynkinLab path notation. Each line is a path, `#` starts a comment, and whitespace or commas separate
-tokens. A line with one vertex declares an isolated label. The six operators are:
+`Bigraph.from_paths(*paths, labels=None, arrow_multiplicity=2)` builds a labeled bigraph from one
+or more DynkinLab path blocks. Blocks are joined with newlines. Each line is a path, `#` starts a
+comment, and whitespace or commas separate tokens. A line with one vertex declares an isolated label.
+A single multiline string still works. `labels` and `arrow_multiplicity` are keyword-only. The six
+operators are:
 
 | operator | entries |
 |---|---|
@@ -232,17 +234,21 @@ tokens. A line with one vertex declares an isolated label. The six operators are
 | `<.` | `+m, +1` |
 
 $m$ is the `arrow_multiplicity`. Explicit labels pin matrix order and reject path labels outside the
-order; conflicting declarations of the same pair raise `ValueError`.
+order; conflicting declarations of the same pair raise `ValueError`. Labels must be passed by
+keyword because the positional slots belong to path blocks.
 
 ```python
 from dynkinlab import Bigraph
 
-a3 = Bigraph.from_paths("1--2--3")
+a3 = Bigraph.from_paths("1--2", "2--3")
 print(a3.labels)  # (1, 2, 3)
 print(a3.matrix.entries)
 
 pinned = Bigraph.from_paths("b--a", labels=("a", "b"))
 print(pinned.labels)  # ('a', 'b')
+
+isolated = Bigraph.from_paths(labels=("a", "b"))
+print(isolated.matrix.entries)  # ((2, 0), (0, 2))
 ```
 
 `Bigraph(matrix, labels=None)` is a label-generic view over a `QuasiCartanMatrix`. It derives
@@ -284,6 +290,20 @@ from dynkinlab import Bigraph, QuasiCartanMatrix
 bigraph = Bigraph(QuasiCartanMatrix(((2, -1), (-2, 2))), ("a", "b"))
 print(bigraph.to_markdown())
 print(bigraph.to_html())
+```
+
+`Bigraph.to_markdown()` and `to_html()` render the bigraph itself: an edge summary and an inline SVG.
+`Bigraph.to_matrix_markdown(options=None)` and
+`Bigraph.to_matrix_html(options=None, *, collapse=False)` render its underlying matrix with the
+bigraph's labels. The matrix methods forward display options and HTML collapsing to the existing
+matrix renderers and leave the bigraph unchanged.
+
+```python
+from dynkinlab import Bigraph
+
+bigraph = Bigraph.from_paths("1--2", "2--3")
+print(bigraph.to_matrix_markdown())
+print(bigraph.to_matrix_html(collapse=True))
 ```
 
 `Bigraph.layout(layout=None, *, seed=None, iterations=None, options=None)` returns a coordinate

@@ -230,29 +230,29 @@ class Bigraph:
     @classmethod
     def from_paths(
         cls,
-        text: str,
+        *paths: str,
         labels: Iterable[Hashable] | None = None,
-        *,
         arrow_multiplicity: int = 2,
     ) -> "Bigraph":
         """Construct a labeled bigraph from DynkinLab path notation.
 
-        Each line is a path of vertices joined by ``--``, ``..``, ``->``,
-        ``<-``, ``.>``, or ``<.``. Whitespace and commas separate tokens,
-        ``#`` starts a comment, and a line with one vertex declares an
+        Each path block is a sequence of lines; blocks are joined with
+        newlines. Each line is a path of vertices joined by ``--``, ``..``,
+        ``->``, ``<-``, ``.>``, or ``<.``. Whitespace and commas separate
+        tokens, ``#`` starts a comment, and a line with one vertex declares an
         isolated label. Labels default to first appearance unless an explicit
         order is supplied.
 
         Parameters
         ----------
-        text : str
-            Path-notation source.
+        *paths : str
+            One or more path-notation blocks. Blocks are joined with newlines.
         labels : Iterable[Hashable] | None
             Optional explicit label order. Path labels outside this order are
-            rejected.
+            rejected. Labels are keyword-only.
         arrow_multiplicity : int
             Reverse magnitude assigned to every arrow operator. The default
-            is 2.
+            is 2. This value is keyword-only.
 
         Returns
         -------
@@ -262,16 +262,17 @@ class Bigraph:
         Raises
         ------
         ValueError
-            If the text is malformed, a pair is declared inconsistently, a
-            path label is outside the explicit order, or the multiplicity is
-            not a positive integer.
+            If a path argument is not a string, the text is malformed, a pair
+            is declared inconsistently, a path label is outside the explicit
+            order, or the multiplicity is not a positive integer.
         """
-        if not isinstance(text, str):
-            raise ValueError("text must be a string")
+        if any(not isinstance(path, str) for path in paths):
+            raise ValueError("path arguments must be strings; pass labels by keyword")
         if isinstance(arrow_multiplicity, bool) or not isinstance(arrow_multiplicity, int):
             raise ValueError("arrow_multiplicity must be a positive integer")
         if arrow_multiplicity <= 0:
             raise ValueError("arrow_multiplicity must be a positive integer")
+        text = "\n".join(paths)
         pinned = _pinned_labels(labels)
 
         order: list[Hashable] = []
@@ -777,6 +778,47 @@ class Bigraph:
         return (
             f'<div class="dynkinlab-bigraph" '
             f'data-edges="{html.escape(summary, quote=True)}">{svg}</div>'
+        )
+
+    def to_matrix_markdown(self, options: DisplayOptions | None = None) -> str:
+        """Render the underlying matrix with the bigraph labels as Markdown.
+
+        Parameters
+        ----------
+        options : DisplayOptions | None
+            Per-call display options. The canonical options are used when omitted.
+
+        Returns
+        -------
+        str
+            Markdown table whose row and column headers are the bigraph labels.
+        """
+        return self.matrix.to_markdown(options=options, labels=self.labels)
+
+    def to_matrix_html(
+        self,
+        options: DisplayOptions | None = None,
+        *,
+        collapse: bool = False,
+    ) -> str:
+        """Render the underlying matrix with the bigraph labels as HTML.
+
+        Parameters
+        ----------
+        options : DisplayOptions | None
+            Per-call display options. The canonical options are used when omitted.
+        collapse : bool
+            Whether to wrap the labeled table in a collapsed HTML disclosure.
+
+        Returns
+        -------
+        str
+            HTML table whose row and column headers are the bigraph labels.
+        """
+        return self.matrix.to_html(
+            options=options,
+            labels=self.labels,
+            collapse=collapse,
         )
 
     def _repr_html_(self) -> str:

@@ -3,6 +3,8 @@
 # SPDX-License-Identifier: MIT
 """Tests for display options and notebook representations."""
 
+from collections.abc import Hashable, Iterable
+
 import pytest
 
 import dynkinlab
@@ -483,6 +485,68 @@ class TestBigraphDisplay:
         html = bigraph.to_html()
 
         assert "stroke-dasharray" in html
+
+    def test_matrix_markdown_uses_bigraph_labels(self) -> None:
+        matrix = DynkinType("D", 8).cartan_matrix()
+        labels = (1, 2, 3, 4, 5, 7, 8, 9)
+        bigraph = Bigraph(matrix, labels)
+
+        markdown = bigraph.to_matrix_markdown()
+
+        assert "|   | 1 | 2 | 3 | 4 | 5 | 7 | 8 | 9 |" in markdown
+
+    def test_matrix_html_uses_bigraph_labels(self) -> None:
+        bigraph = Bigraph(QuasiCartanMatrix(((2, -1), (-1, 2))), ("a", "b"))
+
+        html = bigraph.to_matrix_html()
+
+        assert "<th>a</th><th>b</th>" in html
+        assert "<tr><th>a</th><td>2</td><td>-1</td></tr>" in html
+
+    def test_matrix_html_can_collapse(self) -> None:
+        bigraph = Bigraph(QuasiCartanMatrix(((2, -1), (-1, 2))), ("a", "b"))
+
+        html = bigraph.to_matrix_html(collapse=True)
+
+        assert "<details" in html
+        assert "<summary>Matrix (2 x 2)</summary>" in html
+
+    def test_matrix_view_forwards_options(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        bigraph = Bigraph(QuasiCartanMatrix(((2, -1), (-1, 2))), ("a", "b"))
+        captured: dict[str, object] = {}
+
+        def fake_markdown(
+            self: QuasiCartanMatrix,
+            options: DisplayOptions | None = None,
+            *,
+            labels: Iterable[Hashable] | None = None,
+        ) -> str:
+            captured["options"] = options
+            captured["labels"] = labels
+            return "matrix"
+
+        monkeypatch.setattr(QuasiCartanMatrix, "to_markdown", fake_markdown)
+        display_options = DisplayOptions(matrix_index_base=1)
+
+        assert bigraph.to_matrix_markdown(display_options) == "matrix"
+        assert captured["options"] is display_options
+        assert captured["labels"] == ("a", "b")
+
+    def test_matrix_view_does_not_mutate_bigraph(self) -> None:
+        bigraph = Bigraph(QuasiCartanMatrix(((2, -1), (-1, 2))), ("a", "b"))
+        labels = bigraph.labels
+        entries = bigraph.matrix.entries
+        edges = bigraph.edges
+
+        bigraph.to_matrix_markdown()
+        bigraph.to_matrix_html(collapse=True)
+
+        assert bigraph.labels == labels
+        assert bigraph.matrix.entries == entries
+        assert bigraph.edges == edges
 
 
 class TestDynkinDisplay:

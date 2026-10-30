@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   types, A9, D13, and A9-to-D8 from first principles with a fixed tour and parameter labs.
 - `Bigraph.from_paths` for the six-operator path notation, including explicit label order, isolated
   vertices, comments, conflict detection, and configurable arrow multiplicity.
+- `Bigraph.to_matrix_markdown` and `Bigraph.to_matrix_html` for label-aware rendering of the
+  underlying matrix, including collapsed HTML.
 - `QuasiCartanMatrix.has_faithful_bigraph` and display-only `labels` on `to_markdown`/`to_html`,
   with optional collapsed HTML for wide matrices.
 - `Bigraph.layout`, `Bigraph.draw`, and `BlockCutTree.draw`, driven by NetworkX layouts, plus the
@@ -47,6 +49,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Breaking:** `Bigraph.from_paths` now accepts one or more path blocks as variadic positional
+  arguments and joins them with newlines. `labels` and `arrow_multiplicity` are keyword-only;
+  positional labels are no longer accepted. A single multiline string still works.
+- The masterclass notebook now passes path blocks separately and renders values through their
+  notebook hooks, using multi-object `display` instead of wrapping single values in
+  `display(Markdown(value.to_markdown()))`.
 - The automatic bigraph layout now prefers Kamada-Kawai for connected graphs when SciPy is
   available and otherwise falls back to an unweighted, energy-based spring layout with a configurable
   iteration count, defaulting to 10000 iterations. Planar graphs with a four-vertex clique use a

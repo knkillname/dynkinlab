@@ -113,13 +113,12 @@ A3 = Bigraph.from_paths("1--2--3")
 display(
     HTML(
         '<div style="display:flex;gap:1.5rem;flex-wrap:wrap;">'
-        f"<div>{A2.matrix.to_html(labels=A2.labels)}</div>"
-        f"<div>{A3.matrix.to_html(labels=A3.labels)}</div>"
+        f"<div>{A2.to_matrix_html()}</div>"
+        f"<div>{A3.to_matrix_html()}</div>"
         "</div>",
     ),
 )
-display(Markdown(A2.matrix.quadratic_form.to_markdown()))
-display(Markdown(A2.matrix.inertia.to_markdown()))
+display(A2.matrix.quadratic_form, A2.matrix.inertia)
 assert A2.matrix.inertia == Inertia(2, 0, 0)
 assert A3.matrix.inertia == Inertia(3, 0, 0)
 
@@ -156,8 +155,7 @@ for name, matrix in drawable_cases:
     drawable_lines.append(f"| {name} | {faithful} |")
 display(Markdown("\n".join(drawable_lines)))
 display(Markdown("**Matrix-only case: 2/4**\n\n" + bad.to_markdown(labels=(1, 2))))
-display(Markdown(bad.inertia.to_markdown()))
-display(Markdown(bad.classify().to_markdown()))
+display(bad.inertia, bad.classify())
 bad_bigraph = Bigraph(bad, (1, 2))
 try:
     tuple(bad_bigraph.edges)
@@ -202,8 +200,8 @@ A3_FLATED = A3.flation(1, 2)
 display(
     HTML(
         '<div style="display:flex;gap:1.5rem;flex-wrap:wrap;">'
-        f"<div>{A3.matrix.to_html(labels=A3.labels)}</div>"
-        f"<div>{A3_FLATED.matrix.to_html(labels=A3_FLATED.labels)}</div>"
+        f"<div>{A3.to_matrix_html()}</div>"
+        f"<div>{A3_FLATED.to_matrix_html()}</div>"
         "</div>",
     ),
 )
@@ -239,8 +237,7 @@ plt.show()
 # %%
 E6 = DynkinType("E", 6).bigraph()
 E6_RESULT = E6.classify()
-display(Markdown(E6_RESULT.to_markdown()))
-display(Markdown(E6_RESULT.witness.to_markdown()))
+display(E6_RESULT, E6_RESULT.witness)
 assert E6_RESULT.status is ClassificationStatus.CLASSIFIED
 assert E6_RESULT.components[0].dynkin_type == DynkinType("E", 6)
 assert E6_RESULT.verify()
@@ -265,19 +262,21 @@ plt.show()
 # `classify()`.
 
 # %%
-A9_TEXT = """1--2..3--1
-3..4--5--3
-3--9--4
-5..9
-5..6..8..5
-4--7"""
-A9 = Bigraph.from_paths(A9_TEXT, labels=tuple(range(1, 10)))
-display(Markdown("**A9 matrix**\n\n" + A9.matrix.to_markdown(labels=A9.labels)))
+A9 = Bigraph.from_paths(
+    "1--2..3--1",
+    "3..4--5--3",
+    "3--9--4",
+    "5..9",
+    "5..6..8..5",
+    "4--7",
+    labels=tuple(range(1, 10)),
+)
+display(Markdown("**A9 matrix**\n\n" + A9.to_matrix_markdown()))
 A9_CERTIFICATE = A9.a_type_certificate()
 assert A9_CERTIFICATE is not None
 assert A9_CERTIFICATE.verify(A9)
 assert A9_CERTIFICATE.components[0].dynkin_type == DynkinType("A", 9)
-display(Markdown(A9_CERTIFICATE.to_markdown()))
+A9_CERTIFICATE
 
 # %% [markdown]
 # **Figure 3.** $A_9$ and its block-cut tree. The blocks are $\{1,2,3\}$, $\{3,4,5,9\}$, $\{4,7\}$,
@@ -316,10 +315,14 @@ D13_CORE_GRAPH = Bigraph.from_paths("1..2--3..4..5--1")
 D13_CORE = DCore(EdgeMultiset.from_bigraph(D13_CORE_GRAPH))
 D13_PIECES = (
     Bigraph.from_paths("1..2..8..1"),
-    Bigraph.from_paths("2--3--6..2\n6--7"),
+    Bigraph.from_paths("2--3--6..2", "6--7"),
     Bigraph.from_paths("3..4"),
     Bigraph.from_paths(
-        "4--10--5..4\n5..9..4\n9--10\n9--12..13--9\n10--11",
+        "4--10--5..4",
+        "5..9..4",
+        "9--10",
+        "9--12..13--9",
+        "10--11",
         labels=(4, 5, 9, 10, 11, 12, 13),
     ),
     Bigraph.from_paths("1--5"),
@@ -328,8 +331,7 @@ D13 = D13_CORE.gluing(D13_PIECES, labels=tuple(range(1, 14)))
 assert D13.verify()
 assert D13.dynkin_type == DynkinType("D", 13)
 assert D13.gluing.classify().components[0].dynkin_type == DynkinType("D", 13)
-display(Markdown(D13.to_markdown()))
-display(HTML(D13.gluing.matrix.to_html(labels=D13.gluing.labels, collapse=True)))
+display(D13, HTML(D13.gluing.to_matrix_html(collapse=True)))
 
 # %% [markdown]
 # **Figure 4.** The D-core and the resulting $D_{13}$ bigraph. The five core edges are red and the
@@ -375,8 +377,7 @@ assert D8.path == (1, 3, 5, 6)
 assert D8.dynkin_type == DynkinType("D", 8)
 assert D8.result.labels == (1, 2, 3, 4, 5, 7, 8, 9)
 assert D8.result.classify().components[0].dynkin_type == DynkinType("D", 8)
-display(Markdown(D8.to_markdown()))
-display(Markdown("**D8 matrix**\n\n" + D8.result.matrix.to_markdown(labels=D8.result.labels)))
+display(D8, Markdown("**D8 matrix**\n\n" + D8.result.to_matrix_markdown()))
 
 # %% [markdown]
 # **Figure 5.** The $A_9$ cyclization. The shortest path $1-3-5-6$ is highlighted on the left; the
@@ -416,11 +417,11 @@ plt.show()
 
 # %%
 B6 = Bigraph.from_paths(
-    """1--2--3..1
-3--4..5--3
-3.>6
-4->6
-5->6""",
+    "1--2--3..1",
+    "3--4..5--3",
+    "3.>6",
+    "4->6",
+    "5->6",
 )
 AFFINE_A2 = Bigraph.from_paths("1--2--3--1")
 
@@ -521,7 +522,7 @@ plt.show()
 # %%
 PATHS = "1--2--3--4"
 LAB_GRAPH = Bigraph.from_paths(PATHS)
-display(Markdown(LAB_GRAPH.matrix.to_markdown(labels=LAB_GRAPH.labels)))
+display(Markdown(LAB_GRAPH.to_matrix_markdown()))
 assert LAB_GRAPH.matrix.inertia.is_positive_definite
 assert LAB_GRAPH.matrix.inertia.positive == LAB_GRAPH.dimension
 assert LAB_GRAPH.classify().status is ClassificationStatus.CLASSIFIED
@@ -539,7 +540,7 @@ SOURCE, TARGET = 1, 2
 LAB_FLATED = A3.flation(SOURCE, TARGET)
 assert LAB_FLATED.matrix.inertia == A3.matrix.inertia
 assert LAB_FLATED.classify().status is ClassificationStatus.CLASSIFIED
-display(Markdown(LAB_FLATED.matrix.to_markdown(labels=LAB_FLATED.labels)))
+display(Markdown(LAB_FLATED.to_matrix_markdown()))
 figure, ax = plt.subplots(figsize=(5.0, 3.5))
 LAB_FLATED.draw(ax=ax, positions=a3_positions, title=f"T({SOURCE}, {TARGET}) A3")
 figure.tight_layout()
@@ -555,7 +556,7 @@ LAB_CYCLIZATION = A9.a_cyclization(X, Y)
 assert LAB_CYCLIZATION.verify()
 assert LAB_CYCLIZATION.result.dimension == A9.dimension - 1
 assert LAB_CYCLIZATION.result.matrix.inertia.is_positive_definite
-display(Markdown(LAB_CYCLIZATION.to_markdown()))
+LAB_CYCLIZATION
 
 # %% [markdown]
 # ## References

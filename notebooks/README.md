@@ -26,6 +26,34 @@ also verifies that the source runs without modifying the committed artifact. The
 local function or class definitions, every code cell is at most 40 lines, and every code cell is
 preceded by Markdown that explains it.
 
+## Source conventions
+
+Path blocks are separate `Bigraph.from_paths` arguments, not escaped newline strings:
+
+```python
+A9 = Bigraph.from_paths(
+    "1--2..3--1",
+    "3..4--5--3",
+    "3--9--4",
+    "5..9",
+    "5..6..8..5",
+    "4--7",
+    labels=tuple(range(1, 10)),
+)
+```
+
+Value objects render through their notebook hooks. A single value can be the last expression in a
+cell; several values use multi-object `display`:
+
+```python
+A9_CERTIFICATE
+display(E6_RESULT, E6_RESULT.witness)
+```
+
+Manual `display(Markdown(...))` is reserved for raw Markdown strings and composites such as captions.
+`Bigraph.to_matrix_markdown()` and `to_matrix_html()` render the matrix with the bigraph labels. The
+notebook test rejects direct `display(Markdown(value.to_markdown()))` wrappers.
+
 ## Colab workflow
 
 1. Open `dynkin-masterclass.ipynb` from the repository in Google Colab and select a CPU runtime.
@@ -64,8 +92,8 @@ The labs check invariants or certificate validity rather than one hardcoded type
 ## Local verification
 
 The smoke test parses the Python source, checks that the committed notebook has the same cell types
-and normalized sources, enforces the 40-line cap, the no-definition rule, and the no-coordinate-table
-rule, then executes the source-derived notebook in a clean kernel:
+and normalized sources, enforces the 40-line cap, the no-definition rule, the no-coordinate-table
+rule, and the hook-first display guard, then executes the source-derived notebook in a clean kernel:
 
 ```console
 hatch test tests/test_notebook.py --no-cov

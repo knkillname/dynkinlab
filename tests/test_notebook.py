@@ -35,6 +35,34 @@ def _code_cells(notebook: NotebookNode) -> list[tuple[int, NotebookNode]]:
     return [(index, cell) for index, cell in enumerate(notebook.cells) if cell.cell_type == "code"]
 
 
+def _direct_markdown_wrappers(source: str) -> list[int]:
+    """Return line numbers of direct display(Markdown(value.to_markdown())) calls."""
+    tree = ast.parse(source)
+    lines: list[int] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        if not isinstance(node.func, ast.Name) or node.func.id != "display":
+            continue
+        if not node.args:
+            continue
+        markdown = node.args[0]
+        if not isinstance(markdown, ast.Call):
+            continue
+        if not isinstance(markdown.func, ast.Name) or markdown.func.id != "Markdown":
+            continue
+        if not markdown.args:
+            continue
+        rendered = markdown.args[0]
+        if (
+            isinstance(rendered, ast.Call)
+            and isinstance(rendered.func, ast.Attribute)
+            and rendered.func.attr == "to_markdown"
+        ):
+            lines.append(node.lineno)
+    return lines
+
+
 def _is_number(node: ast.expr) -> bool:
     """Return whether a node is a numeric literal."""
     return (
@@ -120,6 +148,24 @@ def test_markdown_uses_latex_for_math_operators() -> None:
             assert operator not in cell.source, (
                 f"Markdown cell {index} uses {operator!r}; use LaTeX notation instead"
             )
+
+
+def test_no_direct_markdown_wrappers() -> None:
+    """Hook-backed values must not be wrapped only to call to_markdown()."""
+    for index, cell in _code_cells(_read_source_with_jupytext()):
+        wrapper_lines = _direct_markdown_wrappers(cell.source)
+        assert not wrapper_lines, (
+            f"cell {index} wraps to_markdown() in display(Markdown(...)) at lines {wrapper_lines}"
+        )
+
+
+def test_direct_markdown_wrapper_guard_detects_injected_wrapper() -> None:
+    """The structural guard must catch the pattern it forbids."""
+    injected = "display(Markdown(A9_CERTIFICATE.to_markdown()))"
+
+    assert _direct_markdown_wrappers(injected) == [1]
+    assert _direct_markdown_wrappers('display(Markdown("caption" + value.to_markdown()))') == []
+    assert _direct_markdown_wrappers("display(value)") == []
 
 
 def test_notebook_has_no_thesis_framing() -> None:

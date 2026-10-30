@@ -123,7 +123,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"notebooks/dynkin-masterclass.py" = ["D100"]
+"notebooks/dynkin-masterclass.py" = ["B018", "D100"]
 "src/dynkinlab/bigraph.py" = ["PLC0415"]
 "src/dynkinlab/classifier.py" = ["PLR0911", "PLR0912", "PLR2004"]
 "src/dynkinlab/dynkin.py" = ["PLR0911", "PLR0912", "PLR2004"]
