@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `Bigraph.solidify(...)` with `SolidificationResult`, `SolidificationStatus`, and
+  `NoSolidCertificate`: exact bounded search for a flation sequence to a solid bigraph, rigorous
+  impossibility certificates for connected positive semidefinite components of corank at least
+  two, and an explicit `INCONCLUSIVE` outcome for the open indefinite case.
 - A script-first DynkinLab masterclass (`notebooks/dynkin-masterclass.py` plus the generated Colab
   notebook) that teaches quasi-Cartan matrices, exact inertia, faithful bigraphs, flation, finite
   types, A9, D13, and A9-to-D8 from first principles with a fixed tour and parameter labs.

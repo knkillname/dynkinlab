@@ -96,6 +96,35 @@ print(result.to_markdown())
 `Bigraph.to_markdown()` summarizes edges and arrows; `Bigraph.to_html()` and `_repr_html_` provide
 an inline SVG for Colab. `FlationStep` and `FlationSequence` expose the transformation sequence.
 
+## Solidification
+
+`Bigraph.solidify(*, max_states=100_000, max_entry=1_000_000)` searches for a flation sequence that
+removes every dotted edge. A successful result carries a replayable `FlationSequence` and the final
+solid bigraph. The search also returns a verifiable `NoSolidCertificate` when exact inertia proves
+that a connected component cannot solidify, and an explicit `INCONCLUSIVE` result when the open
+indefinite case exhausts the configured caps.
+
+```python
+from dynkinlab import Bigraph, QuasiCartanMatrix, SolidificationStatus
+
+dotted = Bigraph.from_paths("a..b")
+solidified = dotted.solidify()
+assert solidified.status is SolidificationStatus.SOLIDIFIED
+assert solidified.verify()
+print(solidified.to_markdown())
+
+psd = Bigraph(QuasiCartanMatrix(((2, 2, 2), (2, 2, 2), (2, 2, 2))))
+certified = psd.solidify()
+assert certified.status is SolidificationStatus.IMPOSSIBLE
+assert certified.certificate is not None
+assert certified.verify()
+print(certified.certificate.to_markdown())
+```
+
+The `IMPOSSIBLE` branch is limited to connected positive semidefinite components with corank at
+least two. For indefinite inputs the search reports `explored_states`, `frame_classes`, and the
+applied caps; it never turns a bounded negative search into a false impossibility claim.
+
 ## Colab display
 
 Matrices render as HTML tables in Colab, while quadratic forms and inertia render as Markdown.

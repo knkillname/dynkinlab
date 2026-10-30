@@ -14,9 +14,12 @@ from dynkinlab import (
     DCoreGluingCertificate,
     EdgeMultiset,
     Inertia,
+    NoSolidCertificate,
     NotSymmetrizableError,
     QuadraticForm,
     QuasiCartanMatrix,
+    SolidificationResult,
+    SolidificationStatus,
     SymmetrizerCertificate,
     SymmetrizerObstruction,
 )
@@ -51,9 +54,12 @@ class TestPackage:
             "FlationSequence",
             "FlationStep",
             "Inertia",
+            "NoSolidCertificate",
             "NotSymmetrizableError",
             "QuadraticForm",
             "QuasiCartanMatrix",
+            "SolidificationResult",
+            "SolidificationStatus",
             "SymmetrizerCertificate",
             "SymmetrizerObstruction",
             "__version__",
@@ -79,9 +85,12 @@ class TestPackage:
             "FlationSequence",
             "FlationStep",
             "Inertia",
+            "NoSolidCertificate",
             "NotSymmetrizableError",
             "QuadraticForm",
             "QuasiCartanMatrix",
+            "SolidificationResult",
+            "SolidificationStatus",
             "SymmetrizerCertificate",
             "SymmetrizerObstruction",
             "__version__",
@@ -110,6 +119,11 @@ class TestPackage:
         assert DCore.__name__ == "DCore"
         assert DCoreGluingCertificate.__name__ == "DCoreGluingCertificate"
         assert ACyclizationCertificate.__name__ == "ACyclizationCertificate"
+
+    def test_solidification_types_are_importable(self) -> None:
+        assert SolidificationStatus.SOLIDIFIED.value == "solidified"
+        assert NoSolidCertificate.__name__ == "NoSolidCertificate"
+        assert SolidificationResult.__name__ == "SolidificationResult"
 
     def test_symmetrizer_certificate_types_are_importable(self) -> None:
         certificate = SymmetrizerCertificate(

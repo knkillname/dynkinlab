@@ -852,6 +852,36 @@ class Bigraph:
             self.labels,
         )
 
+    def solidify(
+        self,
+        *,
+        max_states: int = 100_000,
+        max_entry: int = 1_000_000,
+    ) -> "dynkinlab.solidification.SolidificationResult":
+        """Search for a flation sequence to a solid bigraph or certify impossibility.
+
+        Parameters
+        ----------
+        max_states : int
+            Maximum number of exact states accepted by the search.
+        max_entry : int
+            Maximum absolute intermediate entry accepted by the search.
+
+        Returns
+        -------
+        SolidificationResult
+            A verified sequence, an impossibility certificate, or an explicit
+            inconclusive outcome.
+
+        Raises
+        ------
+        ValueError
+            If the matrix is not symmetric or a cap is not a positive integer.
+        """
+        from dynkinlab.solidification import solidify_bigraph
+
+        return solidify_bigraph(self, max_states=max_states, max_entry=max_entry)
+
     def classify(self) -> "dynkinlab.dynkin.DynkinClassification":
         """Classify the underlying matrix while preserving labels."""
         from dynkinlab.classifier import DynkinClassifier

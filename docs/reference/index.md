@@ -277,6 +277,45 @@ the same labels. `FlationStep` and `FlationSequence` are first-class witnesses; 
 source and target is the sign inversion used by the classifier. `FlationSequence.to_markdown()` lists
 the steps in application order and labels equal endpoints as a sign inversion.
 
+## Bigraph solidification
+
+`Bigraph.solidify(*, max_states=100_000, max_entry=1_000_000)` decides whether a symmetric bigraph
+admits a flation sequence to a solid bigraph. The immutable `SolidificationResult` has one of three
+statuses:
+
+| status | meaning |
+|---|---|
+| `SOLIDIFIED` | a replayable `FlationSequence` and final solid `Bigraph` are present |
+| `IMPOSSIBLE` | a `NoSolidCertificate` proves that a connected component cannot solidify |
+| `INCONCLUSIVE` | the exact search exhausted its state or entry cap without finding a witness |
+
+The `IMPOSSIBLE` branch is rigorous only for connected positive semidefinite components with corank
+at least two. Flation preserves inertia and connectedness, and a connected positive semidefinite
+Cartan matrix has corank at most one. Indefinite inputs are never certified impossible; the open
+search reports `explored_states`, `frame_classes`, `max_states`, `max_entry`, and a reason.
+
+```python
+from dynkinlab import Bigraph, QuasiCartanMatrix, SolidificationStatus
+
+dotted = Bigraph.from_paths("a..b")
+result = dotted.solidify()
+assert result.status is SolidificationStatus.SOLIDIFIED
+assert result.verify()
+
+psd = Bigraph(QuasiCartanMatrix(((2, 2, 2), (2, 2, 2), (2, 2, 2))))
+certified = psd.solidify()
+assert certified.status is SolidificationStatus.IMPOSSIBLE
+assert certified.certificate is not None
+assert certified.certificate.verify(psd)
+```
+
+The search uses exact Python integers, considers sign inversions and flations over dotted edges
+only, and processes disconnected components independently. It stores exact states for correctness
+and separately counts frame-isomorphism classes using absolute off-diagonal weights. Relabelled
+states share a frame class; sign-inverted states remain distinct when they can change the next
+move. `SolidificationResult.verify()` accepts only a valid sequence or a valid certificate, and
+inconclusive results always return `False`.
+
 ## Bigraph display
 
 `Bigraph.to_markdown()` returns a compact table of directions, styles, and multiplicities.

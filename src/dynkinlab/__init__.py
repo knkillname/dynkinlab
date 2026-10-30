@@ -16,6 +16,11 @@ from dynkinlab.flation import FlationSequence, FlationStep
 from dynkinlab.inertia import Inertia
 from dynkinlab.quadratic_form import QuadraticForm
 from dynkinlab.quasi_cartan import QuasiCartanMatrix
+from dynkinlab.solidification import (
+    NoSolidCertificate,
+    SolidificationResult,
+    SolidificationStatus,
+)
 from dynkinlab.structure import (
     ABlockPartition,
     ATypeCertificate,
@@ -58,9 +63,12 @@ __all__ = [
     "FlationSequence",
     "FlationStep",
     "Inertia",
+    "NoSolidCertificate",
     "NotSymmetrizableError",
     "QuadraticForm",
     "QuasiCartanMatrix",
+    "SolidificationResult",
+    "SolidificationStatus",
     "SymmetrizerCertificate",
     "SymmetrizerObstruction",
     "__version__",

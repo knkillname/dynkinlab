@@ -33,6 +33,17 @@ Hatch drives every quality gate; install it once with `uv tool install hatch`.
 - The public surface is exactly `src/dynkinlab/__init__.py::__all__`, asserted verbatim by
   `tests/test_package.py`; update both when adding a public name.
 
+## Algorithm exploration
+
+- Treat algorithm and hypothesis exploration as an incremental experiment: print or yield partial
+  results after every useful unit of work, and keep the search resumable instead of letting a long
+  run time out with no output. A partial frontier, a cycle count, or a negative result at a stated
+  bound is more valuable than silence.
+- Quotient by the **frame** `F(A)` up to vertex isomorphism when detecting repeated exploration.
+  The frame records the absolute off-diagonal weights, so states that differ only by relabeling or
+  by solid/dotted sign choices share a frame class. Keep exact matrix states separately when sign
+  choices affect the next move, and report both counts.
+
 ## Invariants
 
 - Exact arithmetic is a correctness requirement: inertia uses `Fraction` congruence reduction,

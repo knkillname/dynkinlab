@@ -27,4 +27,5 @@ mkdir -p "$interpreter_dir"
 ln -sfn "$(hatch env find hatch-test.py3.13)" "$interpreter_dir/test-venv"
 
 printf '\nOpenCode: %s\n' "$(opencode --version)"
+printf 'OpenSpec: %s\n' "$(openspec --version)"
 printf 'Dev container ready. Run hatch run verify.\n'

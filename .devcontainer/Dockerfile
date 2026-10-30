@@ -20,8 +20,10 @@ ENV DEBIAN_FRONTEND=noninteractive \
 ENTRYPOINT []
 CMD ["sleep", "infinity"]
 
-# Hatch drives the repository checks; OpenCode is the in-container agent.
+# Hatch drives the repository checks, OpenSpec the planning workflow, and
+# OpenCode is the in-container agent.
 RUN uv tool install --python /usr/local/bin/python hatch \
+    && npm install --global @fission-ai/openspec@1.15.0 \
     && curl -fsSL https://opencode.ai/v2/install | bash -s -- --no-modify-path \
     && install -m 0755 /root/.opencode/bin/opencode /usr/local/bin/opencode \
     && rm -rf /root/.opencode
